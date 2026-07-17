@@ -29,16 +29,18 @@
 六角架構 × 乾淨架構 × CQRS:
 
 ```
-crates/
-  domain/        # Entities + Domain Services(FIFO 分攤,純函式)
-  application/   # commands/ + queries/(use case interactors)、inbound/outbound ports
-  infra/         # outbound adapters:PostgreSQL、NATS(Stream)、名單儲存(檔案系統 → GCS)
-apps/
-  api/           # HTTP inbound adapter(axum:Controller + Presenter)
-  worker/        # NATS 任務 consumer + 到期週期任務
+projects/
+  points/            # bounded context「點數中心」——libs 與部署單元同一子樹
+    crates/
+      domain/        # Entities + Domain Services(FIFO 分攤,純函式)
+      application/   # commands/ + queries/(use case interactors)、ports
+      infra/         # outbound adapters:PostgreSQL、NATS(Stream)、名單儲存(檔案系統 → GCS)
+    apps/
+      api/           # points-api:HTTP inbound adapter(axum:Controller + Presenter)
+      worker/        # points-worker:NATS 任務 consumer + 到期週期任務
 ```
 
-依賴方向嚴格單向:`apps → infra → application → domain`。
+依賴方向嚴格單向:`apps → points-infra → points-application → points-domain`。未來的 bounded context(如發送排程器)各自成家(`projects/dispatch/…`);**context 之間禁止 Cargo 依賴**,只透過公開 API 與 NATS 事件溝通。
 
 ## 技術棧
 

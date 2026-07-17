@@ -67,7 +67,7 @@
 | 指令收斂 | Makefile | `make up / api / worker / test / lint …` |
 | 多實例模擬 | 多終端 `make worker`;Docker 化後 `docker compose up --scale worker=N` | competing consumers 驗證 |
 | workspace | Cargo workspace,`resolver = "3"`,`edition = "2024"` | 依賴版本以 `[workspace.dependencies]` 統一 |
-| crate 佈局 | `crates/domain|application|infra` + `apps/api|worker` | 依賴方向 `apps → infra → application → domain`;`apps/` 命名避開 DDD service 術語 |
+| monorepo 佈局 | **`projects/{context}/crates\|apps`**(context 優先) | 一個 bounded context 的 libs 與部署單元收在同一子樹(現有 `projects/points/…`,未來 `projects/dispatch/…`);crate 名 `{context}-{名稱}`(`points-domain`、`points-api`);workspace members 用 glob(`projects/*/crates/*`、`projects/*/apps/*`);**context 之間禁止 Cargo 依賴**,只透過公開 API 與 NATS 事件溝通;依賴方向 `apps → infra → application → domain` |
 
 ## 4. 工程規約(跨文件通用)
 

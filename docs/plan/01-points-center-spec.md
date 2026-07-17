@@ -506,22 +506,25 @@ HTTP Response
 ```
 
 ```
-crates/
-  domain/        # Entities:Issuance、CustomerPoints、PointTransaction、領域錯誤
-                 # Domain Services:FIFO 分攤(RedemptionAllocation,純函式)
-  application/   # commands/:六個 command interactors(Application Services,走 domain + tx)
-                 # queries/:三個 query interactors(唯讀直投影)
-                 # ports/repositories:寫側 outbound traits——IssuanceRepository、
-                 #   CustomerPointsRepository、GrantTaskPublisher、RecipientListStore
-                 # ports/queries:讀側 outbound traits(回 Read Model,無聚合)
-  infra/         # outbound adapters(Gateways):PG(寫側 repositories + 讀側 queries)、
-                 # NATS(Stream)、名單儲存(v1 檔案系統 / 正式 GCS)、wire DTO
-apps/            # 部署單元:inbound adapters(presentation)+ composition root
-  api/           # Controller + Presenter(axum,NDJSON 串流上傳與自訂方法路由 → 呼叫 commands/queries)
-  worker/        # NATS consumer + 到期週期任務 → 呼叫 commands(無 view,presentation 退化為 ack/nack)
+projects/
+  points/            # bounded context「點數中心」——libs 與部署單元同一子樹
+    crates/
+      domain/        # Entities:Issuance、CustomerPoints、PointTransaction、領域錯誤
+                     # Domain Services:FIFO 分攤(RedemptionAllocation,純函式)
+      application/   # commands/:六個 command interactors(Application Services,走 domain + tx)
+                     # queries/:三個 query interactors(唯讀直投影)
+                     # ports/repositories:寫側 outbound traits——IssuanceRepository、
+                     #   CustomerPointsRepository、GrantTaskPublisher、RecipientListStore
+                     # ports/queries:讀側 outbound traits(回 Read Model,無聚合)
+      infra/         # outbound adapters(Gateways):PG(寫側 repositories + 讀側 queries)、
+                     # NATS(Stream)、名單儲存(v1 檔案系統 / 正式 GCS)、wire DTO
+    apps/            # 部署單元:inbound adapters(presentation)+ composition root
+      api/           # points-api:Controller + Presenter(axum,NDJSON 串流與自訂方法路由)
+      worker/        # points-worker:NATS consumer + 到期週期任務(無 view,presentation 退化為 ack/nack)
 ```
 
-- 依賴方向嚴格單向:`apps → infra → application → domain`;composition root(各 app 的 main)把 outbound adapters 以 `Arc<dyn Trait>` 注入 interactors。
+- 依賴方向嚴格單向:`apps → points-infra → points-application → points-domain`;composition root(各 app 的 main)把 outbound adapters 以 `Arc<dyn Trait>` 注入 interactors。
+- **未來的 bounded context 各自成家**:發送排程器 = `projects/dispatch/{crates,apps}`;context 之間**禁止 Cargo 依賴**,只透過公開 HTTP API 與 NATS 事件溝通。
 - **未來的發送排程器是另一個 bounded context**:在 monorepo 內另立 app(自己的 crates/DB/計畫文件),只透過本系統公開 HTTP API 對接;屆時 `FOR UPDATE SKIP LOCKED` 排程認領、排程引擎純函式等主題隨之規劃。
 
 ---

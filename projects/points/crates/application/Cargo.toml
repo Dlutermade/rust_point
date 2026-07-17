@@ -1,0 +1,12 @@
+[package]
+name = "points-application"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+points-domain.workspace = true
+async-trait.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
