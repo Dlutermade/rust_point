@@ -14,7 +14,7 @@
 
 ### 領域規則
 
-1. 點數只有絕對時間窗 `[生效, 到期)`:發點當下換算、整批一致;兩端查詢級瞬間生效。
+1. 點數只有絕對時間窗 `[生效, 到期)`:發點當下換算、整批一致;兩端查詢級瞬間生效。永久點無到期端(DB 為 `'infinity'`,`expires_at > now()` 恆真——所有查詢零特判)。
 2. 一次發點是一個整體:批量連續處理,不逐人排隊。
 3. 來源防重複:同 `(author, source_id)` 同客戶一生入帳一次。
 4. FIFO 兌換:生效窗內按 `expires_at` 升冪分攤;不足整筆拒絕。
@@ -64,7 +64,7 @@ CREATE TABLE point_issuances (
     source_id             TEXT NOT NULL,
     amount_per_recipient  BIGINT NOT NULL CHECK (amount_per_recipient > 0),
     effective_at          TIMESTAMPTZ NOT NULL,
-    expires_at            TIMESTAMPTZ NOT NULL,
+    expires_at            TIMESTAMPTZ NOT NULL,  -- 永久 = 'infinity'
     recipients_uri        TEXT,                      -- 清單快照 URI(file:// | gs://,不可變)
     recipient_count       INT,
     upload_id             UUID,                      -- 現行上傳 session;開新即換
@@ -94,7 +94,7 @@ CREATE TABLE customer_points (
     original_amount   BIGINT NOT NULL CHECK (original_amount > 0),
     remaining_amount  BIGINT NOT NULL CHECK (remaining_amount >= 0),
     effective_at      TIMESTAMPTZ NOT NULL,
-    expires_at        TIMESTAMPTZ NOT NULL,
+    expires_at        TIMESTAMPTZ NOT NULL,      -- 永久 = 'infinity'(PG 原生值,查詢/排序零特判)
     issuance_id       UUID NOT NULL REFERENCES point_issuances (issuance_id),
     author            TEXT NOT NULL,
     source_id         TEXT NOT NULL,
@@ -119,19 +119,19 @@ CREATE TABLE point_transactions (
 );
 CREATE INDEX idx_point_transactions_customer ON point_transactions (shop_id, customer_id, occurred_at DESC);
 
--- 兌換分攤明細(redeem 交易的子表;一列 = 從某批次扣多少,與交易同 tx 寫入)
-CREATE TABLE redemption_allocations (
+-- 兌換扣減明細(redeem 交易的子表;一列 = 從哪筆點數扣多少,與交易同 tx 寫入)
+CREATE TABLE redemption_deductions (
     transaction_id    UUID NOT NULL REFERENCES point_transactions (transaction_id),
     customer_point_id UUID NOT NULL REFERENCES customer_points (customer_point_id),
     amount            BIGINT NOT NULL CHECK (amount > 0),
     PRIMARY KEY (transaction_id, customer_point_id)
 );
-CREATE INDEX idx_redemption_allocations_batch ON redemption_allocations (customer_point_id); -- 批次守恆/反查用
+CREATE INDEX idx_redemption_deductions_point ON redemption_deductions (customer_point_id); -- 批次守恆/反查用
 ```
 
 兩個 UNIQUE 是冪等的最後防線;寫入一律 `ON CONFLICT DO NOTHING`。
 
-**批次守恆(對帳不變量)**:`original_amount = remaining_amount + Σ(該批次的 redemption_allocations.amount) + 到期額(expire 交易,source_id = 批次 ID)`——ops 腳本離峰驗證。
+**批次守恆(對帳不變量)**:`original_amount = remaining_amount + Σ(該批次的 redemption_deductions.amount) + 到期額(expire 交易,source_id = 批次 ID)`——ops 腳本離峰驗證。
 
 **餘額查詢**:
 
@@ -201,6 +201,7 @@ SELECT COALESCE(SUM(remaining_amount), 0) FROM customer_points
 
 - 獨立執行檔,**run-to-completion**(清掃到無過期批次即退出);排程外部化——dev 手動 `make expiry-job`,prod = Cloud Scheduler → Cloud Run Job(節奏預設 1h)。
 - 餘額正確性不依賴它(查詢級到期),它補交易留痕 + 發事件。
+- 永久點(`expires_at = 'infinity'`)不滿足 `expires_at <= now()`,天然不進掃描、無到期事件。
 - 重疊執行互斥:PG advisory lock,搶到才跑;冪等(交易 UNIQUE)兜底,鎖只省重工。
 - 分塊處理(同批同時到期可達千萬列),每塊在一個**互動式 tx** 內:
   1. 掃描(走 `idx_customer_points_expirable`),讀歸零前 remaining。

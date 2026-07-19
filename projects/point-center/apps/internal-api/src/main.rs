@@ -1,5 +1,5 @@
-//! point-center internal-api shell — ops-facing delivery (UC-1/5/6:
-//! issuance lifecycle, progress, recipients). Controller + Presenter + composition root.
+//! point-center internal-api shell — ops-facing delivery (issuance
+//! lifecycle, progress, recipients). Controller + Presenter + composition root.
 //! Scaffold only — routes land in the next iteration.
 
 use tracing_subscriber::EnvFilter;

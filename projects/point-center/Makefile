@@ -17,10 +17,10 @@ logs:          ## follow point-center infra logs
 
 # ── run (delivery shells) ──
 
-internal-api:  ## ops-facing API: issuance lifecycle (UC-1/5/6)
+internal-api:  ## ops-facing API: issuance lifecycle
 	cargo run -p point-center-internal-api
 
-storefront-api: ## storefront-facing API: redeem / balance / transactions (UC-2/3/4)
+storefront-api: ## storefront-facing API: redeem / balance / transactions
 	cargo run -p point-center-storefront-api
 
 grant-worker:  ## NATS consumer, grant pipeline (open more terminals = more instances)

@@ -14,14 +14,14 @@
 | 欄位 | 必填 | 說明 |
 |------|------|------|
 | `amount` | ✓ | 每人發放數值,人人相同 |
-| `expireOnDate` / `expireAfterDays` | 二選一 | 日期須晚於現在 / 天數 ≥ 1 |
+| `expireOnDate` / `expireNever` | 二選一 | 日期須晚於現在 / `true` = 永久;相對天數由呼叫端換算成絕對時點 |
 | `effectiveAt` | — | 省略 = 立即生效;須早於到期 |
 | `author` + `sourceId` | ✓ | 業務冪等鍵,全域唯一 |
 
 ```jsonc
 // 請求
 { "amount": 500, "effectiveAt": "2026-08-01T00:00:00+08:00",
-  "expireAfterDays": 30, "author": "dispatcher", "sourceId": "campaign-2026-08" }
+  "expireOnDate": "2026-08-31T00:00:00+08:00", "author": "dispatcher", "sourceId": "campaign-2026-08" }
 // 201 + Location: /issuances/{id}
 { "issuanceId": "…", "status": "draft" }
 ```
@@ -107,7 +107,7 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
 
 - **絕不超扣**:不足整筆拒絕;任意併發下餘額不為負。
 - **來源即冪等**:同客戶同來源同參數重送 → `200` 回首次結果;異參數 → `409`。
-- 扣點依 FIFO 跨批分攤;UC-4 留 `redeem` 交易含分攤明細。
+- 扣點先扣最快到期、跨筆分攤;UC-4 留 `redeem` 交易含扣減明細。
 
 ## UC-3 點數總覽 — `GET /customers/{id}/points`
 
@@ -123,12 +123,12 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
 ```
 
 - 餘額只計生效窗內批次;未生效批次列表可見(即將入袋)但不計入。
-- 批次依到期升冪,與 FIFO 順序一致。
+- 批次依到期升冪,與 FIFO 順序一致;永久點 `expiresAt` 回 `null`、排最後(與扣減順序一致)。
 
 ## UC-4 交易紀錄 — `GET /customers/{id}/transactions?limit=&offset=`
 
 - `200 {total, entries}`,新到舊分頁。
-- 每筆:時間、類型、來源、變動(±)、兌換分攤明細。
+- 每筆:時間、類型、來源、變動(±)、兌換扣減明細。
 - 每筆都答得出「誰、憑什麼」。
 
 ## UC-5 發點進度 — `GET /issuances/{id}`
@@ -214,6 +214,7 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
 - **X-Request-Id**:回應一律帶;有帶沿用、沒帶生成(UUID v7);log 全程附 `request_id`。
 - 狀態碼:`201`+Location、`202`(非同步)、`308`+Range(續傳)、`400`(傳輸層)、`409`(衝突)、`422`(參數)。
 - 錯誤格式:`{"error": {"code", "message", …結構化欄位}}`;呼叫端不解析 message。
+- 完整性錯誤(如帳本負剩餘)一律 `500`:細節只進 log 與告警,不外洩給呼叫端。
 - **JSON 容器規約**:頂層與 JSONB 欄位不用裸 array——先物件、明確欄位再接 array(如 `{"entries": […]}`),為擴充留位。
 - 分頁 `?limit=&offset=` 回 `total`;`GET /healthz` 不受資源慣例約束。
 

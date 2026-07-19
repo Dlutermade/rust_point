@@ -1,5 +1,5 @@
 //! point-center storefront-api shell — storefront-facing delivery
-//! (UC-2/3/4: redeem, balance, transactions on behalf of customers).
+//! (redeem, balance, transactions on behalf of customers).
 //! Controller + Presenter + composition root.
 //! Scaffold only — routes land in the next iteration.
 
