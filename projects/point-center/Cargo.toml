@@ -1,0 +1,59 @@
+[workspace]
+resolver = "3" # virtual manifest 沒有 edition,不明示會退回 resolver 1
+members = [
+    "components/*/*",
+    "apps/*",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+
+# ── internal ──
+point-center-ledger-core       = { path = "components/ledger/core" }
+point-center-ledger-adapters   = { path = "components/ledger/adapters" }
+point-center-issuance-core     = { path = "components/issuance/core" }
+point-center-issuance-adapters = { path = "components/issuance/adapters" }
+
+# ── async runtime & HTTP ──
+tokio      = { version = "1.53.0", features = ["full"] }
+axum       = "0.8.9"
+tower-http = { version = "0.7.0", features = ["trace", "request-id", "catch-panic"] }
+
+# ── messaging ──
+async-nats = "0.49.1"
+
+# ── database ──
+# macros 只為 migrate! 保留;query! 編譯期檢查依 tech/01 不用
+sqlx = { version = "0.9.0", default-features = false, features = [
+    "runtime-tokio", "postgres", "uuid", "chrono", "json", "migrate", "macros", "derive",
+] }
+
+# ── serialization ──
+serde      = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.150"
+
+# ── ids & time ──
+uuid   = { version = "1.24.0", features = ["v7", "serde"] } # 全域規約:UUID v7
+chrono = { version = "0.4.45", features = ["serde"] }
+
+# ── errors:lib 用 thiserror、bin 用 anyhow ──
+thiserror = "2.0.19"
+anyhow    = "1.0.104"
+
+# ── async glue ──
+async-trait = "0.1.91"
+futures     = "0.3.33"
+
+# ── observability ──
+tracing            = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+opentelemetry      = "0.32.0"
+opentelemetry_sdk  = { version = "0.32.1", features = ["rt-tokio"] }
+# 預設 features 是 http-proto + blocking reqwest(不合 tokio);logs 走 stdout 故不開
+opentelemetry-otlp = { version = "0.32.0", default-features = false, features = [
+    "grpc-tonic", "trace", "metrics", "internal-logs",
+] }
+tracing-opentelemetry = { version = "0.33.0", features = ["metrics"] } # 0.33 ↔ opentelemetry 0.32

@@ -1,0 +1,17 @@
+[package]
+name = "point-center-issuance-adapters"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+point-center-issuance-core.workspace = true
+async-nats.workspace = true
+sqlx.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+futures.workspace = true
+tracing.workspace = true

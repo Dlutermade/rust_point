@@ -1,0 +1,16 @@
+[package]
+name = "point-center-ledger-adapters"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+point-center-ledger-core.workspace = true
+sqlx.workspace = true
+async-nats.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

@@ -1,31 +1,38 @@
-.PHONY: up down logs api worker build check fmt lint test
+.PHONY: up down logs build check fmt lint test
 
-up:            ## start NATS + PostgreSQL
-	docker compose up -d
+# Container engine: podman if present, otherwise docker.
+# Override anytime: make up COMPOSE="docker compose"
+COMPOSE ?= $(shell command -v podman >/dev/null 2>&1 && echo podman compose || echo docker compose)
+export COMPOSE
 
-down:          ## stop infrastructure
-	docker compose down
+# ── shared infrastructure (NATS message bus) + project coordination ──
+# All project-specific targets (run, infra, cargo) live in projects/<name>/Makefile.
+# One Cargo workspace per project; adding a project = add its delegation lines here.
 
-logs:          ## follow infrastructure logs
-	docker compose logs -f
+up:            ## start shared infra (NATS), then every project's own infra
+	$(COMPOSE) up -d
+	$(MAKE) -C projects/point-center up
 
-api:           ## run the HTTP API
-	cargo run -p points-api
+down:          ## stop every project's infra, then shared infra
+	$(MAKE) -C projects/point-center down
+	$(COMPOSE) down
 
-worker:        ## run a worker instance (open more terminals = more instances)
-	cargo run -p points-worker
+logs:          ## follow shared infra logs
+	$(COMPOSE) logs -f
+
+# ── cargo (delegated: one workspace per project) ──
 
 build:
-	cargo build --workspace
+	$(MAKE) -C projects/point-center build
 
 check:
-	cargo check --workspace
+	$(MAKE) -C projects/point-center check
 
 fmt:
-	cargo fmt --all
+	$(MAKE) -C projects/point-center fmt
 
 lint:
-	cargo clippy --workspace --all-targets -- -D warnings
+	$(MAKE) -C projects/point-center lint
 
 test:
-	cargo test --workspace
+	$(MAKE) -C projects/point-center test

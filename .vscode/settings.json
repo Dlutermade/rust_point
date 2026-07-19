@@ -1,0 +1,7 @@
+{
+  // 一 project 一 Cargo workspace(root 無 Cargo.toml)——
+  // rust-analyzer 需明確掛載各 project 的 workspace;新 project 進場時在此加一行。
+  "rust-analyzer.linkedProjects": [
+    "projects/point-center/Cargo.toml"
+  ]
+}

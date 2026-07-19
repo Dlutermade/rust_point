@@ -1,9 +1,0 @@
-[package]
-name = "points-domain"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-uuid.workspace = true
-chrono.workspace = true
-thiserror.workspace = true

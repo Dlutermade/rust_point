@@ -1,0 +1,21 @@
+[package]
+name = "point-center-grant-worker"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+point-center-issuance-core.workspace = true
+point-center-issuance-adapters.workspace = true
+point-center-ledger-core.workspace = true
+point-center-ledger-adapters.workspace = true
+tokio.workspace = true
+async-nats.workspace = true
+serde_json.workspace = true
+futures.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-otlp.workspace = true
+tracing-opentelemetry.workspace = true

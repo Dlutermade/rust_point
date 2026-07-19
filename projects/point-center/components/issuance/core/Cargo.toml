@@ -1,0 +1,13 @@
+[package]
+name = "point-center-issuance-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+point-center-ledger-core.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
+futures.workspace = true
+tracing.workspace = true
