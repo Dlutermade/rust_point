@@ -37,9 +37,9 @@
 | **對象清單** | 千萬級 JSONL(一行一個 `{"customerId": "<uuid>"}`),只走串流上傳 |
 | **issuance** | 一次發點的紀錄與進度追蹤單位 |
 | **author + sourceId** | 每筆異動必帶的來源(見下) |
-| **redemption** | 扣減餘額;絕不超扣 |
+| **redemption** | 兌換;有生命週期:預留(扣點佔用)→ 確認(定案)/ 取消(釋放回補);絕不超扣 |
 | **FIFO 扣點** | 先扣最快到期批次,跨批分攤;永久點最後扣 |
-| **transaction** | 異動留痕:grant(+)/ redeem(−)/ expire(−)/ adjust(±) |
+| **transaction** | 異動留痕:grant(+)/ redeem(−)/ release(+)/ expire(−)/ adjust(±) |
 
 **來源(author + sourceId)**:
 
@@ -59,7 +59,7 @@
 | UC | 名稱 | 角色 | API |
 |----|------|------|-----|
 | UC-1 | 發點 | 營運 / 外部系統 | `POST /issuances` → 開 session → `PUT` 傳塊 → `:issue` |
-| UC-2 | 兌換 | 客戶端應用 | `POST /customers/{id}/redemptions` |
+| UC-2 | 兌換(預留/確認/取消) | 客戶端應用 | `POST /customers/{id}/redemptions` → `:confirm` / `:cancel` |
 | UC-3 | 點數總覽 | 客戶端應用 | `GET /customers/{id}/points` |
 | UC-4 | 交易紀錄 | 客戶端應用 / 營運 | `GET /customers/{id}/transactions` |
 | UC-5 | 發點進度 | 營運 / 外部系統 | `GET /issuances/{id}` |
@@ -67,7 +67,7 @@
 
 ## 驗收條件(完成的定義)
 
-1. `make up` 啟動 NATS + Postgres;四個 app 可各自啟動(`internal-api` / `storefront-api` / `grant-worker`,`expiry-job` 為單次執行)。
+1. `make up` 啟動 NATS + Postgres;五個 app 可各自啟動:`internal-api` / `storefront-api` / `grant-worker`(常駐);`expiry-job`(到期清掃,小時級)與 `hold-timeout-job`(逾時預留取消,分鐘級)為排程觸發。
 2. **發點全流程**:建立 → 開 session → 傳塊 → `:issue` → 入帳 → UC-3 餘額正確。傳塊案例含:
    - 單人清單
    - 中斷後查 `Range` 續傳
@@ -79,7 +79,7 @@
 6. **來源唯一即冪等**:同來源同參數重送回 `200` 既有;異參數 `409`;下載行數 = `uploadedCount`。
 7. **來源防重複**:同來源二次發點,已領者略過、未領照發;併發同來源亦不重複。
 8. **生效窗**:三種到期方式換算正確;未生效不可用,生效即時可用;到期後餘額即時排除;`expire` 交易與 `points.batch.expired.{author}` 事件於週期內補上(可訂閱驗證);永久點恆可用、不進到期掃描、無到期事件。
-9. **兌換重送保護**:同客戶同來源同參數回首次結果;異參數 `409`。
+9. **兌換生命週期**:預留即扣點、確認定案、取消回補原批;重送同參數回首次結果、異參數 `409`;`confirmed` 後再 cancel → `409`;逾時預留由 job 自動取消並發 `points.redemption.cancelled` 事件(可訂閱驗證)。
 10. **併發兌換**:總額 > 餘額的併發下,最終餘額恰為 0;兩種策略皆過。
 11. **多 grant-worker**:≥ 2 個 process 同時消費,無重複入帳;`expiry-job` 重疊執行被 advisory lock 擋下。
 12. `cargo test` 通過(FIFO、換算、狀態轉移等純函式單測)。
@@ -105,7 +105,8 @@
 - 清單儲存接 GCS
 - client 直傳 GCS(wire 已對齊;屆時行級驗證移至 `:issue`)
 - CQRS 物理分離
-- 轉讓 / 凍結 / 預扣 / 調整 API
+- 轉讓 / 凍結 / 調整 API
+- 兌換退款(`confirmed` 後退點)、redemption `confirmed`/`reserved` 事件(`cancelled` 已入 v1)
 - webhook、認證授權(服務呼叫端發憑證,綁定 shop)
 - **public-api**(瀏覽器直達):客戶自查點數/交易(唯讀 UC-3/4 子集);前提 = 客戶身分認證 + CORS
 - GCP 部署(api = Cloud Run service、worker = Cloud Run worker pool)與正式 CI

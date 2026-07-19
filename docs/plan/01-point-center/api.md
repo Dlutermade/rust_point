@@ -92,22 +92,46 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
   - 直接 `:issue` 重試(斷點補完)。
   - 清單救不回:開新 session 重傳 → `:issue`,只補缺的人。
 
-## UC-2 兌換 — `POST /customers/{id}/redemptions`
+## UC-2 兌換 — 預留 / 確認 / 取消
+
+兌換是有狀態的生命週期:**預留**鎖定並扣點、**確認**定案、**取消**釋放回補。結帳這類「先扣點、金流成功才定案」的場景走兩階段;無金流的即時兌換一步結算。
+
+**建立** — `POST /customers/{id}/redemptions`
 
 ```jsonc
-// 請求
-{ "author": "order-service", "sourceId": "order-9527", "amount": 400 }
+// 請求;settlement 必填:deferred = 只預留(待確認)、immediate = 預留即確認
+{ "author": "order-service", "sourceId": "order-9527", "amount": 400,
+  "settlement": "deferred", "holdTtlSeconds": 900 }
 // 201
-{ "transactionId": "…", "amount": 400, "balance": 100 }
+{ "redemptionId": "…", "status": "reserved", "amount": 400, "balance": 100 }
 // 409 — 錯誤附結構化欄位,呼叫端不解析 message
 { "error": { "code": "insufficient_balance",
              "message": "balance 300 is less than requested 400",
              "balance": 300, "requestedAmount": 400 } }
 ```
 
-- **絕不超扣**:不足整筆拒絕;任意併發下餘額不為負。
-- **來源即冪等**:同客戶同來源同參數重送 → `200` 回首次結果;異參數 → `409`。
-- 扣點先扣最快到期、跨筆分攤;UC-4 留 `redeem` 交易含扣減明細。
+**確認** — `POST /customers/{id}/redemptions/{redemptionId}:confirm`
+
+```jsonc
+// 200(冪等:已 confirmed 回同結果)
+{ "redemptionId": "…", "status": "confirmed" }
+// 409 — 預留已被逾時取消(已 release);呼叫端據此以同 sourceId 重建
+{ "error": { "code": "redemption_already_cancelled", "reason": "timeout" } }
+```
+
+**取消** — `POST /customers/{id}/redemptions/{redemptionId}:cancel`
+
+```jsonc
+// 200(冪等:已 cancelled 回同結果;已 confirmed → 409)——點數回補
+{ "redemptionId": "…", "status": "cancelled", "balance": 500 }
+```
+
+- **絕不超扣**:預留即扣;不足整筆拒絕,任意併發下餘額不為負。
+- **預留即佔用**:點數於預留當下離開可用餘額(扣 `remaining`),因為它已被那筆訂單吃走;取消以 `release` 交易原批補回。
+- **來源即冪等**:同客戶同來源同參數重送 → `200` 回首次結果;異參數 → `409`;取消後同來源可重建。
+- 扣點先扣最快到期、跨筆分攤;UC-4 留 `redeem`(預留)與 `release`(取消)交易含扣減明細。
+- `immediate` = 原子完成預留 + 確認,回 `status: "confirmed"`,無 `holdTtlSeconds`。
+- **取消發事件**:主動或逾時取消都在 tx 內發布 `points.redemption.cancelled.{author}`(`reason` 區分),供訂單/通知中心據以退款告知——尤其逾時取消,呼叫端本來不知情。
 
 ## UC-3 點數總覽 — `GET /customers/{id}/points`
 
@@ -166,6 +190,11 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
 - 到期留痕與事件由週期任務補上(預設 1h,`EXPIRE_INTERVAL` 可調),不影響餘額正確性。
 - **每個過期批次發布一則 `points.batch.expired.{author}` 事件**(payload 見「NATS 事件」)——最細粒度事實,下游自行按店家/客戶/來源聚合(轉換、退補償等皆為訂閱方職責)。
 
+**C. 兌換取消必被通知**
+
+- 取消(主動或逾時)在同一 tx 內發布 `points.redemption.cancelled.{author}`,發布成功才 COMMIT——不丟事件。
+- 逾時取消由點數中心自主發起、呼叫端不知情,故此事件是結帳 Saga 補償的回報路徑(訂單中心聚合 → 通知中心告知客戶)。
+
 ## NATS 事件(公開合約)
 
 事件與 HTTP 同級,都是對外合約。共通語意:
@@ -203,6 +232,17 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
   "effectiveAt": "2026-08-01T00:00:00Z", "expiresAt": "2026-08-31T00:00:00Z" }
 ```
 
+### `points.redemption.cancelled.{author}` — 去重鍵 `redemptionId`
+
+預留被取消(釋放回補)時發布;主動與逾時取消統一發此事件,`reason` 區分。`confirmed` 後不可取消,故無對應事件。
+
+```jsonc
+{ "shopId": "…", "redemptionId": "…", "customerId": "…",
+  "author": "order-service", "sourceId": "order-9527",
+  "amount": 400, "reason": "timeout", "cancelledAt": "…" }
+// reason:"timeout"(逾時自動)| "caller_cancelled"(呼叫端主動,如金流失敗)
+```
+
 ## API 慣例(全域)
 
 - 名詞資源;狀態轉移用自訂方法(`POST …:issue`);`PATCH` 只更新欄位。
@@ -238,7 +278,21 @@ stateDiagram-v2
 ```
 
 - `completed`、`cancelled` 不可逆;`failed` 可重入。
-- 兌換為同步操作,無狀態機。
+
+## Redemption 狀態圖
+
+```mermaid
+stateDiagram-v2
+    [*] --> reserved: 建立(deferred,預留扣點)
+    [*] --> confirmed: 建立(immediate,預留即確認)
+    reserved --> confirmed: confirm(金流成功,定案)
+    reserved --> cancelled: cancel(金流失敗/逾時,release 回補)
+    confirmed --> [*]
+    cancelled --> [*]
+```
+
+- `confirmed`、`cancelled` 皆終態不可逆;confirmed 後要退點屬退款(不做),非取消。
+- 逾時預留由 job 走 `cancel` 兜底(見 internals 逾時預留取消)。
 
 ## 時序圖
 
@@ -281,7 +335,7 @@ sequenceDiagram
     W->>S: 發布 completed 事件 + ack
 ```
 
-**兌換(悲觀鎖)**
+**兌換(預留 → 確認 / 取消,悲觀鎖)**
 
 ```mermaid
 sequenceDiagram
@@ -289,12 +343,22 @@ sequenceDiagram
     participant A as storefront-api
     participant P as PostgreSQL
 
-    C->>A: POST /customers/{id}/redemptions
+    C->>A: POST /customers/{id}/redemptions {settlement: deferred}
     A->>P: BEGIN + 來源重送查核
     A->>P: SELECT … FOR UPDATE(生效窗內,依到期升冪)
     Note over A: 總額檢查 → FIFO 分攤(純函式)
-    A->>P: UPDATE 各批 + INSERT redeem 交易
+    A->>P: UPDATE remaining + INSERT redemption(reserved)/ deductions / redeem 交易
     A->>P: COMMIT
-    A-->>C: 201 {transactionId, balance}
+    A-->>C: 201 {redemptionId, status: reserved, balance}
     Note over C,A: 不足 → ROLLBACK → 409 insufficient_balance
+
+    alt 金流成功
+        C->>A: POST …/{redemptionId}:confirm
+        A->>P: UPDATE redemptions → confirmed
+        A-->>C: 200 {status: confirmed}
+    else 金流失敗 / 逾時
+        C->>A: POST …/{redemptionId}:cancel
+        A->>P: BEGIN → UPDATE remaining 回補 + INSERT release 交易 + redemptions → cancelled → COMMIT
+        A-->>C: 200 {status: cancelled, balance}
+    end
 ```

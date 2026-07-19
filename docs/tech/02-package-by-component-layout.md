@@ -69,7 +69,8 @@ projects/point-center/
     internal-api/                  # 後台:UC-1/5/6(發點生命週期)
     storefront-api/                # 前台系統串接:UC-2/3/4(兌換/餘額/交易)
     grant-worker/                  # NATS consumer(入帳管線)
-    expiry-job/                    # run-to-completion 到期清掃(排程外部化)
+    expiry-job/                    # 到期清掃(run-to-completion,小時級)
+    hold-timeout-job/              # 逾時預留取消(分鐘級,獨立節奏)
 ```
 
 apps 增生只在 `apps/` 加資料夾、components 零改動;能力夠獨立則畢業成新 context。

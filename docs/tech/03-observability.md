@@ -1,6 +1,6 @@
 # 03 — 觀測:OpenTelemetry
 
-> 狀態:**待審查**。prod 前提 = GCP(apis = Cloud Run service、grant-worker = worker pool、expiry-job = Cloud Run Job)。
+> 狀態:**待審查**。prod 前提 = GCP(apis = Cloud Run service、grant-worker = worker pool、expiry-job / hold-timeout-job = Cloud Run Job)。
 
 ## 決策
 
@@ -59,7 +59,8 @@
 - **prod(GCP)**:
   - internal-api / storefront-api = Cloud Run services + otel-collector sidecar(app 推 `localhost:4317`)。
   - grant-worker = Cloud Run worker pool(CPU 常駐,consumer 與背景 flush 天然成立)。
-  - expiry-job = Cloud Run Job(Cloud Scheduler 排程;結束前 flush exporter)。
+  - expiry-job = Cloud Run Job(Cloud Scheduler 每小時;結束前 flush exporter)。
+  - hold-timeout-job = Cloud Run Job(Cloud Scheduler 每分鐘;輕量掃描逾時預留)。
   - 已知坑:request-based billing 下請求外 CPU 被掐,`BatchSpanProcessor` flush 會餓死。
 - **不決**:NATS 在 GCP 的落點(Synadia NGS vs GKE/GCE),留給部署文件。
 

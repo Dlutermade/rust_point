@@ -10,6 +10,7 @@
 |------|-----------|------|------------------------|
 | **Issuance** | issuance | 發點紀錄、狀態機 | 狀態轉移合法性;生效/到期換算 |
 | **CustomerPoints** | ledger | 客戶的批次集合 | **FIFO 分攤**(Domain Service) |
+| **Redemption** | ledger | 兌換紀錄、狀態機(預留→確認/取消) | 狀態轉移合法性 |
 | **PointTransaction** | ledger | 交易留痕 | 不變量:`amount_change` 正負 ↔ 類型 |
 
 ### 領域規則
@@ -17,7 +18,7 @@
 1. 點數只有絕對時間窗 `[生效, 到期)`:發點當下換算、整批一致;兩端查詢級瞬間生效。永久點無到期端(DB 為 `'infinity'`,`expires_at > now()` 恆真——所有查詢零特判)。
 2. 一次發點是一個整體:批量連續處理,不逐人排隊。
 3. 來源防重複:同 `(author, source_id)` 同客戶一生入帳一次。
-4. FIFO 兌換:生效窗內按 `expires_at` 升冪分攤;不足整筆拒絕。
+4. 兌換兩階段:**預留**按生效窗先到期先扣、跨批分攤,即時扣減 `remaining_amount`(不足整筆拒絕);**確認**定案不可逆;**取消**以反向交易補回原批。即時兌換 = 預留即確認。
 5. 餘額 = 生效窗內 `remaining_amount` 總和,即時計算。
 6. 重複請求回首次結果,非錯誤。
 7. component core 不依賴 tokio/sqlx/NATS(編譯期強制);規則全是純函式。
@@ -36,7 +37,9 @@ Command 走 domain + tx;Query 直投影、無鎖無交易。
 | `CancelIssuance` | issuance | UC-1 取消 | 狀態轉移(僅 draft)→ 記 `cancelled_at` |
 | `ProcessIssuanceTask` | issuance | 合約 A | 串流讀清單 → 分塊呼叫 `GrantPoints` → 進度 → 終態 |
 | `GrantPoints` | ledger | 合約 A | 防重複過濾 → 冪等批量入帳 |
-| `RedeemPoints` | ledger | UC-2 | 重送查核 → FIFO 分攤 → tx + 鎖策略 |
+| `ReserveRedemption` | ledger | UC-2 建立 | 重送查核 → FIFO 分攤 → 扣 `remaining` + redeem 交易(+ 鎖策略) |
+| `ConfirmRedemption` | ledger | UC-2 確認 | 狀態轉移 reserved→confirmed(不動餘額) |
+| `CancelRedemption` | ledger | UC-2 取消 | reserved→cancelled → release 補回原批 + tx 內發 `points.redemption.cancelled` 事件 |
 | `ExpirePoints` | ledger | 合約 B | 過期批次歸零 + expire 交易 |
 
 | Query | component | 對應 |
@@ -110,28 +113,54 @@ CREATE TABLE point_transactions (
     transaction_id     UUID PRIMARY KEY,
     shop_id            UUID NOT NULL,
     customer_id        UUID NOT NULL,
-    transaction_type   TEXT NOT NULL CHECK (transaction_type IN ('grant','redeem','expire','adjust')),
-    amount_change      BIGINT NOT NULL,              -- 發點正、兌換/到期負
+    transaction_type   TEXT NOT NULL CHECK (transaction_type IN ('grant','redeem','release','expire','adjust')),
+    amount_change      BIGINT NOT NULL,              -- 發點/取消釋放正、兌換/到期負
     author             TEXT NOT NULL,                -- 到期 = 'system'
-    source_id          TEXT NOT NULL,                -- 到期 = 過期批次 ID
+    source_id          TEXT NOT NULL,                -- 到期 = 過期批次 ID;兌換 = redemption 的來源
     occurred_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (shop_id, customer_id, author, source_id) -- 來源即冪等(shop 為界)
+    UNIQUE (shop_id, customer_id, author, source_id, transaction_type) -- 來源即冪等:每來源每類型至多一筆
 );
 CREATE INDEX idx_point_transactions_customer ON point_transactions (shop_id, customer_id, occurred_at DESC);
 
--- 兌換扣減明細(redeem 交易的子表;一列 = 從哪筆點數扣多少,與交易同 tx 寫入)
+-- 兌換(有狀態聚合:預留 → 確認 / 取消)
+CREATE TABLE redemptions (
+    redemption_id     UUID PRIMARY KEY,
+    shop_id           UUID NOT NULL,
+    customer_id       UUID NOT NULL,
+    author            TEXT NOT NULL,
+    source_id         TEXT NOT NULL,
+    amount            BIGINT NOT NULL CHECK (amount > 0),
+    status            TEXT NOT NULL DEFAULT 'reserved'
+                      CHECK (status IN ('reserved','confirmed','cancelled')),
+    reserved_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    hold_expires_at   TIMESTAMPTZ,               -- 預留逾時界限;即時兌換(建立即確認)為 NULL
+    confirmed_at      TIMESTAMPTZ,               -- confirmed 必填
+    cancelled_at      TIMESTAMPTZ,               -- cancelled 必填(軟刪語意)
+    CHECK ((confirmed_at IS NOT NULL) = (status = 'confirmed')),
+    CHECK ((cancelled_at IS NOT NULL) = (status = 'cancelled'))
+);
+-- 同 shop 同客戶同來源同時最多一筆「活的」;取消後同訂單可重來
+CREATE UNIQUE INDEX uq_redemptions_active_source
+    ON redemptions (shop_id, customer_id, author, source_id)
+    WHERE status <> 'cancelled';
+CREATE INDEX idx_redemptions_hold_expiring                     -- 逾時預留掃描
+    ON redemptions (hold_expires_at) WHERE status = 'reserved';
+
+-- 兌換扣減明細(redemption 的子表;一列 = 從哪筆點數扣多少,與預留同 tx 寫入)
 CREATE TABLE redemption_deductions (
-    transaction_id    UUID NOT NULL REFERENCES point_transactions (transaction_id),
+    redemption_id     UUID NOT NULL REFERENCES redemptions (redemption_id),
     customer_point_id UUID NOT NULL REFERENCES customer_points (customer_point_id),
     amount            BIGINT NOT NULL CHECK (amount > 0),
-    PRIMARY KEY (transaction_id, customer_point_id)
+    PRIMARY KEY (redemption_id, customer_point_id)
 );
 CREATE INDEX idx_redemption_deductions_point ON redemption_deductions (customer_point_id); -- 批次守恆/反查用
 ```
 
 兩個 UNIQUE 是冪等的最後防線;寫入一律 `ON CONFLICT DO NOTHING`。
 
-**批次守恆(對帳不變量)**:`original_amount = remaining_amount + Σ(該批次的 redemption_deductions.amount) + 到期額(expire 交易,source_id = 批次 ID)`——ops 腳本離峰驗證。
+**批次守恆(對帳不變量)**:`original_amount = remaining_amount + Σ(未取消 redemption 的 redemption_deductions.amount) + 到期額(expire 交易,source_id = 批次 ID)`——取消的預留其扣減已由 release 交易補回 `remaining`,故只計 `status <> 'cancelled'` 者;ops 腳本離峰驗證。
+
+**兌換三結局在帳本**:`reserved` 與 `confirmed` 都只有一筆 `redeem`——confirm **不寫新交易**(點在預留時已扣,確認只轉狀態、不動餘額);`cancelled` 另有一筆 `release` 沖回、淨零。兩者在帳本上相同,差別只在 `redemptions.status`——成功與否看 status,不看帳本。
 
 **餘額查詢**:
 
@@ -143,13 +172,13 @@ SELECT COALESCE(SUM(remaining_amount), 0) FROM customer_points
 
 ### 防超扣:兩種兌換策略
 
-`REDEEM_STRATEGY=pessimistic|optimistic` 切換,壓測對比。
+防超扣發生在**預留**階段(扣 `remaining`);確認只轉狀態、取消寫 release 補回,皆輕量無鎖競爭。`REDEEM_STRATEGY=pessimistic|optimistic` 切換,壓測對比。
 
 **A 悲觀鎖(預設)**
 
 - `SELECT … FOR UPDATE`,生效窗內、依 `expires_at, customer_point_id` 排序。
 - 鎖序固定 → 同客戶併發自然排隊,不死鎖。
-- 應用層總額檢查 + FIFO 分攤 → 逐批 UPDATE + INSERT 交易 → COMMIT。
+- 應用層總額檢查 + FIFO 分攤 → 逐批 UPDATE remaining + INSERT redemption(reserved)/ deductions / redeem 交易 → COMMIT。
 - 併發發點的新批次不在快照內:只會少扣,不會超扣。
 
 **B 樂觀條件式更新**
@@ -212,6 +241,14 @@ SELECT COALESCE(SUM(remaining_amount), 0) FROM customer_points
 - 仍是 at-least-once(發布成功但 commit 失敗 → 重發):訂閱方以 `customerPointId` 去重。
 - 持 tx 發布的網路 I/O 在此無害:過期批次無人競爭(不可兌換 + advisory lock 單跑者)。
 - prod 可改 Cloud Scheduler 觸發(Cloud Run job),v1 = worker 內建計時器。
+
+**逾時預留取消(CancelExpiredHolds,hold-timeout-job)**
+
+- 獨立高頻執行檔,與到期清掃分開跑:節奏分鐘級(`HOLD_SWEEP_INTERVAL` 預設 60s),到期清掃是小時級——兩者頻率差一個數量級,不共用 job。
+- `hold_expires_at = reserved_at + holdTtlSeconds`;`holdTtlSeconds` 呼叫端傳,預設 900(15 分鐘),範圍 60–7200;immediate 兌換不設(NULL,不逾時)。
+- 掃 `idx_redemptions_hold_expiring`(`status = 'reserved' AND hold_expires_at <= now()`),每筆走 `CancelRedemption`:reserved→cancelled + release 補回原批 + tx 內發 `points.redemption.cancelled`(`reason=timeout`)。與主動取消同路徑、冪等;逾時由系統自主發起、呼叫端不知情,此事件是唯一回報路徑(→ 訂單中心 → 通知中心告知客戶)。
+- 被迫取消時間 = TTL + 最多一個掃描週期(≤ 60s)。主動取消(金流回調,秒級)是常態,此為兜底,避免棄單永久凍結餘額。
+- 重疊執行以 advisory lock 互斥;冪等(狀態機 + UNIQUE)兜底。
 
 **其他**
 
