@@ -206,7 +206,7 @@ SELECT COALESCE(SUM(remaining_amount), 0) FROM customer_points
 - 分塊處理(同批同時到期可達千萬列),每塊在一個**互動式 tx** 內:
   1. 掃描(走 `idx_customer_points_expirable`),讀歸零前 remaining。
   2. `BEGIN` → 寫 expire 交易 + 歸零(未提交)。
-  3. 發布 `points.batch.expired`(每批次一則,`BatchExpiredV1`)。
+  3. 發布 `points.batch.expired.{author}`(每批次一則,`BatchExpiredV1`)。
   4. 發布成功才 `COMMIT`;失敗 → `ROLLBACK`,下輪重掃。
 - 不丟事件:commit 前任何失敗都回滾 → 批次仍 `remaining > 0` → 下輪重掃重發。
 - 仍是 at-least-once(發布成功但 commit 失敗 → 重發):訂閱方以 `customerPointId` 去重。

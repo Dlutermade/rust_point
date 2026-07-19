@@ -158,13 +158,13 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
 
 - `:issue` 後有限時間內必到 `completed` 或 `failed`,絕不卡 `processing`。
 - 故障、重試、重投不重複入帳。
-- 終態發布 NATS 事件:`points.issuance.completed|failed`(payload 見「NATS 事件」)。
+- 終態發布 NATS 事件:`points.issuance.{completed|failed}.{author}`(payload 見「NATS 事件」)。
 
 **B. 生效與到期 = 查詢級瞬間生效**
 
 - 到達 `effective_at` 即計入餘額可兌換;到達 `expires_at` 即排除。不依賴排程。
 - 到期留痕與事件由週期任務補上(預設 1h,`EXPIRE_INTERVAL` 可調),不影響餘額正確性。
-- **每個過期批次發布一則 `points.batch.expired` 事件**(payload 見「NATS 事件」)——最細粒度事實,下游自行按店家/客戶/來源聚合(轉換、退補償等皆為訂閱方職責)。
+- **每個過期批次發布一則 `points.batch.expired.{author}` 事件**(payload 見「NATS 事件」)——最細粒度事實,下游自行按店家/客戶/來源聚合(轉換、退補償等皆為訂閱方職責)。
 
 ## NATS 事件(公開合約)
 
@@ -173,8 +173,9 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
 - **at-least-once**:可能重複,訂閱方以各事件的去重鍵去重;跨事件順序不保證。
 - payload 為扁平物件、欄位 camelCase;加欄位 = 非破壞演進,破壞性變更以新事件版本發布。
 - 消費模式:各訂閱系統自建 durable **pull** consumer——批量、速率、斷點自主,獨立 cursor 可回放。
+- **subject 分類學**:`points.<資源>.<事實>.<author>`,末段即冪等鍵的 `author`(發起系統)——發起方只訂自己的事件(如 `points.issuance.completed.marketing-center`),在 subject 層過濾、不必讀 payload 再丟棄;全量消費(對帳、監控)用萬用字元 `points.issuance.completed.*`。author 命名規約與訂閱治理屬事件中心(plan/backlog)。
 
-### `points.issuance.completed` — 去重鍵 `issuanceId`
+### `points.issuance.completed.{author}` — 去重鍵 `issuanceId`
 
 ```jsonc
 { "shopId": "…", "issuanceId": "…",
@@ -183,7 +184,7 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
   "completedAt": "2026-08-01T00:12:34Z" }
 ```
 
-### `points.issuance.failed` — 去重鍵 `issuanceId`(重試後再失敗會再發,屬新事實)
+### `points.issuance.failed.{author}` — 去重鍵 `issuanceId`(重試後再失敗會再發,屬新事實)
 
 ```jsonc
 { "shopId": "…", "issuanceId": "…",
@@ -193,7 +194,7 @@ v2 讓 client 直傳 GCS 時,client 演算法零改動。
   "failedAt": "…" }
 ```
 
-### `points.batch.expired` — 去重鍵 `customerPointId`
+### `points.batch.expired.{author}` — 去重鍵 `customerPointId`
 
 ```jsonc
 { "shopId": "…", "customerPointId": "…", "customerId": "…", "issuanceId": "…",
