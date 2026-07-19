@@ -1,102 +1,103 @@
-# 01 — 技術選型記錄
+# 01 — 技術選型
 
 > 狀態:**待審查**
-> 範圍:點數中心 v1(對應 `docs/plan/01-points-center-spec.md` r18)。每項記錄:決策、理由、曾考慮的替代方案。日後選型變更以新編號文件記錄,不回改本文件。
+> 範圍:point-center v1(規格:`docs/plan/01-point-center/`)。
+> 本文維持現在式;決策軌跡記於 `docs/progress`。
 
-## 1. 核心技術線(使用者定案)
+## 核心技術線
 
-| 項目 | 決策 | 版本 |
-|------|------|------|
-| 語言 | Rust | stable 1.97.0 |
-| 非同步 Runtime | tokio | 1.x |
-| 訊息基礎設施 | NATS JetStream | server 2.x / async-nats 0.49 |
+| 項目 | 決策 |
+|------|------|
+| 語言 | Rust stable **1.97.1**(edition 2024) |
+| 非同步 runtime | tokio **1.53.0** |
+| 訊息 | NATS JetStream(server **2.14.3** / async-nats **0.49.1**) |
 
-這兩條是專案前提(tokio 技術線 + NATS JetStream),其餘選型圍繞它們展開。
+## 選型與理由
 
-## 2. 選型明細
+### HTTP — axum 0.8.9
 
-### 2.1 HTTP 框架 — axum 0.8
+- tokio 官方生態,tower middleware 原生整合;body stream 直接支援分塊串流上傳。
+- 替代:actix-web(自有 runtime 抽象,整合較繞)、poem(生態較小)。
 
-- **理由**:tokio 官方生態,與 tower middleware 原生整合;body stream API 直接支援本專案的 NDJSON 串流上傳/下載;社群主流。
-- **替代方案**:actix-web(自有 runtime 抽象,與 tokio 生態整合較繞)、poem(生態較小)。
+### 訊息 — async-nats 0.49.1(JetStream)
 
-### 2.2 訊息 — async-nats 0.49(JetStream Stream)
+- at-least-once 投遞:explicit ack、`AckKind::Progress` 長任務保活、`max_deliver`。
+- NATS 只做訊息,不兼職物件儲存(名單另走儲存 port)。
 
-- **理由**:NATS 官方維護、原生 tokio;Stream 提供 at-least-once 任務投遞(explicit ack、`AckKind::Progress` 長任務保活、max_deliver)與終態事件發布。
-- **範圍限定**:NATS 只做訊息,**不兼職物件儲存**(名單儲存見 §2.3)。
+### 名單儲存 — `RecipientListStore` port
 
-### 2.3 名單儲存 — `RecipientListStore` port:v1 本機檔案系統 → 正式 GCS
+- v1 本機檔案系統(`file://`)→ 正式 GCS(`gs://`);URI scheme 自帶 adapter 語意。
+- GCS adapter 整測用 fake-gcs-server。
+- 替代:NATS Object Store(訊息系統兼職儲存,否決)、名單落 PG(單列放不下,否決)。
 
-- **決策**:千萬級 JSONL 名單經 `RecipientListStore` port 存取;**v1 adapter = 本機檔案系統**(開發零依賴;docker compose 以共享 volume 讓 api 與多個 worker 讀寫同一目錄),**正式環境 adapter = GCS**(最終目標;「JSONL + GCS」即業界名單交換慣例)。儲存引用以 **URI** 表達(`file://…` / `gs://…`),scheme 自帶 adapter 語意。
-- **整合測試**:GCS adapter 開發時以 fake-gcs-server 做整測。
-- **替代方案**:NATS Object Store(否決——不讓訊息系統兼職儲存)、名單存 PG(單列放不下,否決)、MinIO/S3(非最終目標,不必要)。
+### 訊息格式 — JSON(serde 1.0.229 / serde_json 1.0.150)
 
-### 2.4 訊息格式 — JSON(serde_json)/ 名單 JSONL
+- 迭代期可讀性優先(`nats stream view` 直接可讀);wire DTO 帶版本(如 `IssuanceTaskV1`)。
+- 名單為 JSONL,一行一個 JSON 物件(物件形式為擴充留位)。
+- 替代:protobuf(v1 無跨語言消費者,建置成本先不付)、MessagePack(無 schema 又不可讀,否決)。
 
-- **理由**:單人開發 + 全 Rust + 迭代期,可讀性與除錯效率優先(`nats stream view` 直接可讀);wire DTO 帶版本(`IssuanceTaskV1`),編解碼收斂於 infra,未來換格式是局部改動。名單以 JSONL(一行一個 JSON 物件)串流,行格式為物件是為會員群組等擴充預留。
-- **替代方案**:protobuf/prost(schema 演進與跨語言強,但 v1 無跨語言消費者,建置成本先不付)、MessagePack(無 schema 又不可讀,兩頭不討好,否決)。
+### 資料庫 — PostgreSQL 18.4 + sqlx 0.9.0
 
-### 2.5 資料庫 — PostgreSQL 17 + sqlx 0.9
+- sqlx:async 原生、SQL 直寫——本專案核心價值在手寫 tx / `FOR UPDATE` / 條件式 UPDATE / 批量 INSERT。
+- 查詢用 runtime 綁定(`query` / `query_as`),不用 `query!` 編譯期檢查(建置不依賴 DATABASE_URL)。
+- `macros` feature 只為 `sqlx::migrate!` 內嵌遷移保留。
+- PG 18 原生 `uuidv7()`:對帳腳本 / seed 可直接用(應用 ID 仍由程式生成)。
+- 替代:SeaORM(ORM 抽象與鎖控制細膩度衝突)、MySQL(鎖語意與 RETURNING 較弱)。
 
-- **理由**:sqlx 為 async 原生、SQL 直寫不強加 ORM 抽象——本專案的核心價值就在手寫 tx / `FOR UPDATE` / 條件式 UPDATE / 多列批量 INSERT,ORM 反而礙事;`sqlx::migrate!` 內嵌遷移。PG 提供本專案依賴的鎖語意與 `ON CONFLICT DO NOTHING`。
-- **替代方案**:SeaORM(ORM 抽象與鎖控制的細膩度衝突)、MySQL(鎖行為與 RETURNING 支援較弱)。
-- **查詢風格**:runtime 綁定(`sqlx::query` / `query_as`),不用編譯期 macro 檢查——避免建置依賴 DATABASE_URL;此取捨若日後反悔,可漸進改用 offline 模式。
+### ID — UUID v7(uuid 1.24.0)
 
-### 2.6 ID — UUID v7(uuid crate,全域統一規範)
+- 時間有序:大批量插入時主鍵索引順序寫入;全系統統一規範。
+- `source_id` 為呼叫端自定義字串,不在此規範內。
 
-- **理由**:時間有序,大批量插入時主鍵索引順序寫入(v4 隨機打散索引頁,千萬級入帳場景差距顯著);**統一規範,不限本專案**。`source_id` 為呼叫端自定義字串,不在此規範內。
-- **替代方案**:v4(索引局部性差,否決)、自增 bigint(跨服務暴露序號、合併資料衝突,否決)。
+### 觀測 — tracing 0.1.44 + OpenTelemetry
 
-### 2.7 觀測 — tracing + tracing-subscriber(env-filter)
+- tracing 為發聲門面(全 crate 依賴);訂閱端 tracing-subscriber 0.3.23(env-filter、json)。
+- OTel 已定案並接線(靜默停用、span links、基數紀律):決策與版本錨點見 tech/03。
 
-- **理由**:tokio 官方生態;`#[tracing::instrument]` 建 span 跨層追蹤;`RUST_LOG` 執行期調整;結構化欄位(customer_id、issuance_id、author、source_id、amount、elapsed_ms)為壓測與除錯的一等公民。日後接 OpenTelemetry 有現成橋接。
+### 錯誤 — thiserror 2.0.19(lib)/ anyhow 1.0.104(bin)
 
-### 2.8 錯誤處理 — thiserror(lib 層)/ anyhow(bin 層)
+- 具型別錯誤呼應 API 的結構化錯誤欄位;bin 的 main 以 anyhow 收尾。
 
-- **理由**:社群慣例。domain/application 以 thiserror 定義具型別錯誤(呼應 API 的結構化錯誤欄位);apps 的 main 以 anyhow 收尾。
+### 時間 — chrono 0.4.45
 
-### 2.9 時間 — chrono
+- 一律 UTC 絕對時間;v1 無時區運算(排程器 context 屆時自帶 chrono-tz)。
 
-- **理由**:sqlx/serde 整合成熟;生效窗與到期計算皆為 UTC 絕對時間,v1 無時區運算需求(排程器已移出本 context;屆時該 app 自行引入 chrono-tz)。
+## 開發環境
 
-## 3. 開發環境與流程
+| 項目 | 決策 |
+|------|------|
+| 容器引擎 | `COMPOSE ?=` 自動偵測,**podman 優先**、docker fallback;compose 檔為 Compose Spec 中立 |
+| 基礎設施佈局 | root = 共享 NATS;各 context 自有 DB——詳 tech/02 |
+| 指令 | Makefile 兩層:root 協調、context 自持——詳 tech/02 |
+| 多實例模擬 | 多開 `make grant-worker`;容器化後 `--scale grant-worker=N` |
+| 映像 | `nats:2.14.3-alpine`、`postgres:18.4-alpine` |
 
-| 項目 | 決策 | 說明 |
-|------|------|------|
-| 基礎設施 | docker compose | NATS(`-js`)+ PostgreSQL 17 + 名單共享 volume;服務本體 local `cargo run` |
-| 指令收斂 | Makefile | `make up / api / worker / test / lint …` |
-| 多實例模擬 | 多終端 `make worker`;Docker 化後 `docker compose up --scale worker=N` | competing consumers 驗證 |
-| workspace | Cargo workspace,`resolver = "3"`,`edition = "2024"` | 依賴版本以 `[workspace.dependencies]` 統一 |
-| monorepo 佈局 | **`projects/{context}/crates\|apps`**(context 優先) | 一個 bounded context 的 libs 與部署單元收在同一子樹(現有 `projects/points/…`,未來 `projects/dispatch/…`);crate 名 `{context}-{名稱}`(`points-domain`、`points-api`);workspace members 用 glob(`projects/*/crates/*`、`projects/*/apps/*`);**context 之間禁止 Cargo 依賴**,只透過公開 API 與 NATS 事件溝通;依賴方向 `apps → infra → application → domain` |
+## 工程規約(跨文件)
 
-## 4. 工程規約(跨文件通用)
+- API 合約慣例(camelCase、來源即冪等、軟刪除、JSON 物件包裹…)統一定義於 `plan/01-point-center/api.md`,不在此重複。
+- 文件:編號迭代、先審後做;內容維持現在式;繁體中文,程式碼與識別字英文。
+- 註解:直述「為什麼」,不作文件指標;敘述性註解不寫。
+- 依賴:features 明列、版本寫完整版號;升版後以 `cargo tree -d` 驗無版本分裂。
 
-- **API 欄位 camelCase;snake_case 僅存在於 DB**;數值欄位以 amount 概念命名,points 保留為領域概念名。
-- **headers 不承載業務資料**(`Content-Type`、`Upload-Offset` 等傳輸層語意除外)。
-- **無人工冪等鍵**:重送保護一律由業務來源鍵 `(author, sourceId)` 承擔(來源即冪等、即溯源)。
-- **狀態轉移用自訂方法**(AIP-136:`:issue`);PATCH 僅更新欄位。
-- **大名單一律 JSONL 串流**(上傳可續傳、下載可核對),無內嵌通道、無人數門檻。
-- 文件:規格在 `docs/plan/NN-*.md`、技術決策在 `docs/tech/NN-*.md`,皆先審後做;繁體中文,程式碼與識別字英文。
-
-## 5. 版本錨點(2026-07-17)
+## 版本錨點(2026-07-19)
 
 ```toml
-tokio = "1"            # 1.52.x
-axum = "0.8"           # 0.8.9
-async-nats = "0.49"    # 0.49.1
-sqlx = "0.9"           # 0.9.0(features: runtime-tokio, postgres, uuid, chrono)
-serde = "1"            # + serde_json = "1"
-uuid = "1"             # features: v7, serde
-chrono = "0.4"         # features: serde
-tracing = "0.1"        # + tracing-subscriber = "0.3"(env-filter)
-thiserror = "2"
-anyhow = "1"
-tower-http = "0.7"     # features: trace
-futures = "0.3"
+tokio       = "1.53.0"   # full
+axum        = "0.8.9"
+tower-http  = "0.7.0"    # trace, request-id, catch-panic
+async-nats  = "0.49.1"
+sqlx        = "0.9.0"    # runtime-tokio, postgres, uuid, chrono, json, migrate, macros, derive
+serde       = "1.0.229"  # derive
+serde_json  = "1.0.150"
+uuid        = "1.24.0"   # v7, serde
+chrono      = "0.4.45"   # serde
+thiserror   = "2.0.19"
+anyhow      = "1.0.104"
+async-trait = "0.1.91"
+futures     = "0.3.33"
+tracing     = "0.1.44"
+tracing-subscriber = "0.3.23"  # env-filter, json
 ```
 
-Rust toolchain:1.97.0(sqlx 0.9 要求 ≥1.94)。
-
----
-
-*審查通過後依此開工;選型變更走新編號文件(`02-…`),保留決策軌跡。*
+- OpenTelemetry 四件套的錨點在 tech/03 §7(需互相咬合,單獨管理)。
+- Rust toolchain **1.97.1**(sqlx 0.9 要求 ≥ 1.94)。
