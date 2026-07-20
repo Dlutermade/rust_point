@@ -18,7 +18,7 @@ pub struct NewIssuance {
     pub effective_at: Option<DateTime<Utc>>,
 }
 
-/// failed 的結構化原因;與 API 錯誤同形(`{code, message}`)。
+/// `failed` 的結構化原因;與 API 錯誤同形(`{code, message}`)。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FailureReason {
     pub code: String,
@@ -62,7 +62,7 @@ pub enum IssuanceError {
 }
 
 /// Issuance aggregate — the single writer of its own state. `status` is
-/// private and every mutation goes through the `IssuanceStatus` guards,
+/// private and every mutation goes through the [`IssuanceStatus`] guards,
 /// so an illegal transition cannot be expressed by callers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Issuance {
@@ -150,7 +150,7 @@ impl Issuance {
         }
     }
 
-    /// 開新上傳 session(僅 draft / failed):一個 session = 一份完整清單,
+    /// 開新上傳 session(僅 `draft` / `failed`):一個 session = 一份完整清單,
     /// 舊 session 與已 finalize 的清單一併作廢(檔案保留,不再引用)。
     pub fn start_upload_session(&mut self, upload_id: Uuid) -> Result<(), IssuanceError> {
         self.status.validate_recipients_upload()?;

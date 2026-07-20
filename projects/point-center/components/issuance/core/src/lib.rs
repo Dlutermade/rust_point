@@ -11,6 +11,7 @@
 mod expiration_policy;
 mod issuance;
 mod issuance_status;
+mod ports;
 
 pub use expiration_policy::{ExpirationPolicy, ExpirationPolicyError};
 pub use issuance::{
@@ -18,3 +19,8 @@ pub use issuance::{
     UploadSession,
 };
 pub use issuance_status::{IssuanceStatus, IssuanceStatusError};
+pub use ports::{
+    IssuanceCompleted, IssuanceEventError, IssuanceEventPort, IssuanceFailed, IssuanceRepository,
+    IssuanceRepositoryError, IssuanceTask, PartLocation, RecipientListStore,
+    RecipientListStoreError,
+};

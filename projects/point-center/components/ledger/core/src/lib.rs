@@ -11,10 +11,19 @@
 
 mod deduction;
 mod effective_window;
+mod ports;
+mod redemption;
 mod redemption_status;
 mod transaction_type;
 
 pub use deduction::{CustomerPoint, Deduction, DeductionError, deduct};
 pub use effective_window::{EffectiveWindow, EffectiveWindowError, EffectiveWindowPhase, Expiry};
+pub use ports::{
+    CancelError, ConfirmError, CustomerPointsView, DeductionView, ExpiryStore, ExpiryStoreError,
+    GrantBatch, GrantStore, GrantStoreError, LedgerQueries, LedgerQueryError, NewRedemption, Page,
+    PointBatchView, RedemptionOutcome, RedemptionStore, RedemptionStoreError, ReserveError,
+    SweepOutcome, TransactionView, TransactionsPage,
+};
+pub use redemption::{CancelReason, Redemption, Settlement};
 pub use redemption_status::{RedemptionStatus, RedemptionStatusError};
 pub use transaction_type::{TransactionType, TransactionTypeError};

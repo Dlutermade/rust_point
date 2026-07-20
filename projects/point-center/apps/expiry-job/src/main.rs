@@ -1,5 +1,5 @@
 //! point-center expiry-job shell — run-to-completion expiry sweep
-//! (ExpirePoints; advisory lock against overlap). Scheduling is external:
+//! (`ExpirePoints`; advisory lock against overlap). Scheduling is external:
 //! manual in dev, Cloud Scheduler + Cloud Run Job in prod.
 //! Scaffold only — the sweep lands in the next iteration.
 

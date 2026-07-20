@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use point_center_ledger_core::{EffectiveWindow, EffectiveWindowError, Expiry};
 
-/// 到期方式,二選一;對應 API 欄位 expireOnDate / expireNever。
+/// 到期方式,二選一;對應 API 欄位 `expireOnDate` / `expireNever`。
 /// 相對天數(「生效後 N 天」)由呼叫端換算成絕對時點,domain 只認絕對時點。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpirationPolicy {

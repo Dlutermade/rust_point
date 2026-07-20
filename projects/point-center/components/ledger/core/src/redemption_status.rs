@@ -21,8 +21,8 @@ pub enum RedemptionStatusError {
 impl RedemptionStatus {
     /// `:confirm` transition — 定案,點在預留時已扣,僅轉狀態。
     ///
-    /// 守衛為嚴格式:重複 confirm 的冪等回應與「撞已取消 → 409」的
-    /// 區分由 interactor 依錯誤內的當前狀態決定。
+    /// 守衛為嚴格式:重複 `confirm` 的冪等回應與「撞已取消 → 409」的
+    /// 區分由 use case interactor 依錯誤內的當前狀態決定。
     pub fn confirm(self) -> Result<RedemptionStatus, RedemptionStatusError> {
         match self {
             Self::Reserved => Ok(Self::Confirmed),
@@ -33,7 +33,7 @@ impl RedemptionStatus {
     }
 
     /// `:cancel` transition — 主動取消與逾時取消同一守衛;
-    /// 通過後由 interactor 以 release 交易補回原批。
+    /// 通過後由 use case interactor 以 `release` 交易補回原批。
     pub fn cancel(self) -> Result<RedemptionStatus, RedemptionStatusError> {
         match self {
             Self::Reserved => Ok(Self::Cancelled),
@@ -64,7 +64,7 @@ mod tests {
             Ok(RedemptionStatus::Confirmed)
         );
 
-        // then:終態一律拒絕,錯誤附當前狀態(interactor 據此區分冪等回應與 409)
+        // then:終態一律拒絕,錯誤附當前狀態(use case interactor 據此區分冪等回應與 409)
         assert_eq!(
             RedemptionStatus::Confirmed.confirm(),
             Err(RedemptionStatusError::ConfirmNotAllowed(

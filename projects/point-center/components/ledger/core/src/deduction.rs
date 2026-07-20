@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 use crate::effective_window::Expiry;
 
-/// customer_points 一列(兌換所需的投影;呼叫端已完成生效窗過濾與鎖定)。
+/// `customer_points` 一列(兌換所需的投影;呼叫端已完成生效窗過濾與鎖定)。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CustomerPoint {
     pub customer_point_id: Uuid,
@@ -10,7 +10,7 @@ pub struct CustomerPoint {
     pub expiry: Expiry,
 }
 
-/// 一筆扣減:從哪筆點數扣多少(對應 redemption_deductions 一列)。
+/// 一筆扣減:從哪筆點數扣多少(對應 `redemption_deductions` 一列)。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Deduction {
     pub customer_point_id: Uuid,
@@ -23,7 +23,7 @@ pub enum DeductionError {
     NonPositiveAmount(i64),
     #[error("balance {balance} is less than requested {requested_amount}")]
     InsufficientBalance { balance: i64, requested_amount: i64 },
-    /// 帳本完整性失敗:負剩餘不該存在(DB CHECK 擋),出現即資料損毀。
+    /// 帳本完整性失敗:負剩餘不該存在,出現即帳本損毀。
     /// 一次回報全部損毀列供取證;對外映成 500,細節只進 log 與告警。
     #[error("corrupted remaining_amount detected on customer points: {points:?}")]
     CorruptedRemainingAmounts { points: Vec<CustomerPoint> },
@@ -32,10 +32,9 @@ pub enum DeductionError {
 /// 扣減(Domain Service):先扣最快到期的點數(永久點最後),跨筆分攤;
 /// 餘額不足整筆拒絕。
 ///
-/// 排序鍵 (expiry, customer_point_id) 與兌換 SQL 的鎖定順序一致
-/// (DB 端永久 = 'infinity'::timestamptz,ORDER BY 同樣墊底);
-/// 輸入順序不影響結果(內部排序,結果具決定性)。
-/// id 為 UUID v7(時間有序),同到期時等同「先發先扣」,且必不平手。
+/// 排序鍵為 `(expiry, customer_point_id)`;輸入順序不影響結果
+/// (內部排序,結果具決定性)。
+/// `customer_point_id` 為 UUID v7(時間有序),同到期時等同「先發先扣」,且必不平手。
 pub fn deduct(
     redeemable_points: &[CustomerPoint],
     requested_amount: i64,

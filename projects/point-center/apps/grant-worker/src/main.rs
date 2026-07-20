@@ -1,5 +1,5 @@
 //! point-center grant-worker shell — NATS pull consumer for the issuance
-//! grant pipeline (ProcessIssuanceTask; competing consumers). Composition root.
+//! grant pipeline (`ProcessIssuanceTask`; competing consumers). Composition root.
 //! Scaffold only — consumers land in the next iteration.
 
 use tracing_subscriber::EnvFilter;

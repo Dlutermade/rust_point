@@ -49,7 +49,8 @@ Command 走 domain + tx;Query 直投影、無鎖無交易。
 | `GetIssuance` | issuance | UC-5(draft 附上傳資訊) |
 
 - 寫側 / 讀側 ports 分開。
-- interactor 持交易邊界、不含商業規則(規則在純函式)。
+- **port 方法 = 一個原子業務操作**:tx 封裝於 adapter 內,不外洩、不長時;use case interactor 薄——驗證 → 呼叫 port → 映射結果。
+- 商業規則仍在純函式;adapter 於 tx 內呼叫(如鎖定後以 `deduct` 做 FIFO 分攤)。
 - v1 邏輯 CQRS(共用 PG);物理分離列 v2。
 
 ## DB
@@ -231,7 +232,7 @@ SELECT COALESCE(SUM(remaining_amount), 0) FROM customer_points
 - 獨立執行檔,**run-to-completion**(清掃到無過期批次即退出);排程外部化——dev 手動 `make expiry-job`,prod = Cloud Scheduler → Cloud Run Job(節奏預設 1h)。
 - 餘額正確性不依賴它(查詢級到期),它補交易留痕 + 發事件。
 - 永久點(`expires_at = 'infinity'`)不滿足 `expires_at <= now()`,天然不進掃描、無到期事件。
-- 重疊執行互斥:PG advisory lock,搶到才跑;冪等(交易 UNIQUE)兜底,鎖只省重工。
+- 重疊執行互斥:**transaction-level advisory lock**(`pg_try_advisory_xact_lock`,於每塊的 tx 內取得),隨 COMMIT/ROLLBACK 自動釋放——連線池下無孤兒鎖、runner 間不互等;拿不到立刻讓路。冪等(交易 UNIQUE)兜底,鎖只省重工。
 - 分塊處理(同批同時到期可達千萬列),每塊在一個**互動式 tx** 內:
   1. 掃描(走 `idx_customer_points_expirable`),讀歸零前 remaining。
   2. `BEGIN` → 寫 expire 交易 + 歸零(未提交)。
@@ -248,7 +249,7 @@ SELECT COALESCE(SUM(remaining_amount), 0) FROM customer_points
 - `hold_expires_at = reserved_at + holdTtlSeconds`;`holdTtlSeconds` 呼叫端傳,預設 900(15 分鐘),範圍 60–7200;immediate 兌換不設(NULL,不逾時)。
 - 掃 `idx_redemptions_hold_expiring`(`status = 'reserved' AND hold_expires_at <= now()`),每筆走 `CancelRedemption`:reserved→cancelled + release 補回原批 + tx 內發 `points.redemption.cancelled`(`reason=timeout`)。與主動取消同路徑、冪等;逾時由系統自主發起、呼叫端不知情,此事件是唯一回報路徑(→ 訂單中心 → 通知中心告知客戶)。
 - 被迫取消時間 = TTL + 最多一個掃描週期(≤ 60s)。主動取消(金流回調,秒級)是常態,此為兜底,避免棄單永久凍結餘額。
-- 重疊執行以 advisory lock 互斥;冪等(狀態機 + UNIQUE)兜底。
+- 重疊執行互斥同到期清掃:transaction-level advisory lock(獨立 lock key),拿不到立刻讓路;冪等(狀態機 + UNIQUE)兜底。
 
 **其他**
 

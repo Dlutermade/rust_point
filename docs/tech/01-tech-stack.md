@@ -77,6 +77,8 @@
 - API 合約慣例(camelCase、來源即冪等、軟刪除、JSON 物件包裹…)統一定義於 `plan/01-point-center/api.md`,不在此重複。
 - 文件:編號迭代、先審後做;內容維持現在式;繁體中文,程式碼與識別字英文。
 - 註解:直述「為什麼」,不作文件指標;敘述性註解不寫。
+- doc comment 即 rustdoc(Markdown):首句自成摘要;跨型別引用用 intra-doc link(`[\`Type\`]`);識別字/字面值用反引號;範例用 fenced code block(即 doc-test);用語一律全名(use case interactor,不簡稱 interactor)。已知陷阱:link 後緊接全形括號會被解析為 link destination。
+- **core 註解只講契約**:不洩漏單一 adapter 的實作(如 PG 函式名、SQL 語法)——那些歸 internals 與 adapter 本身;`cargo doc` 零警告納入每輪檢查(test / clippy / fmt / doc)。
 - 依賴:features 明列、版本寫完整版號;升版後以 `cargo tree -d` 驗無版本分裂。
 
 ## 版本錨點(2026-07-19)

@@ -29,7 +29,7 @@ pub enum IssuanceStatusError {
 }
 
 impl IssuanceStatus {
-    /// 名單上傳/替換僅在可編輯狀態允許:draft 建檔中、failed 修復清單。
+    /// 名單上傳/替換僅在可編輯狀態允許:`draft` 建檔中、`failed` 修復清單。
     pub fn validate_recipients_upload(self) -> Result<(), IssuanceStatusError> {
         match self {
             Self::Draft | Self::Failed => Ok(()),
@@ -39,7 +39,7 @@ impl IssuanceStatus {
         }
     }
 
-    /// `:issue` transition — submit (from draft) or retry (from failed).
+    /// `:issue` transition — submit (from `draft`) or retry (from `failed`).
     pub fn issue(self) -> Result<IssuanceStatus, IssuanceStatusError> {
         match self {
             Self::Draft | Self::Failed => Ok(Self::Pending),
@@ -49,7 +49,7 @@ impl IssuanceStatus {
         }
     }
 
-    /// `:cancel` transition — soft delete, draft only.
+    /// `:cancel` transition — soft delete, `draft` only.
     pub fn cancel(self) -> Result<IssuanceStatus, IssuanceStatusError> {
         match self {
             Self::Draft => Ok(Self::Cancelled),
@@ -59,7 +59,7 @@ impl IssuanceStatus {
         }
     }
 
-    /// worker 認領任務:pending → processing。
+    /// worker 認領任務:`pending` → `processing`。
     pub fn start_processing(self) -> Result<IssuanceStatus, IssuanceStatusError> {
         match self {
             Self::Pending => Ok(Self::Processing),
@@ -69,7 +69,7 @@ impl IssuanceStatus {
         }
     }
 
-    /// 全批入帳完成:processing → completed(不可逆終態)。
+    /// 全批入帳完成:`processing` → `completed`(不可逆終態)。
     pub fn complete(self) -> Result<IssuanceStatus, IssuanceStatusError> {
         match self {
             Self::Processing => Ok(Self::Completed),
@@ -79,7 +79,7 @@ impl IssuanceStatus {
         }
     }
 
-    /// 永久性失敗或重試耗盡:processing → failed(可重入終態)。
+    /// 永久性失敗或重試耗盡:`processing` → `failed`(可重入終態)。
     pub fn fail(self) -> Result<IssuanceStatus, IssuanceStatusError> {
         match self {
             Self::Processing => Ok(Self::Failed),

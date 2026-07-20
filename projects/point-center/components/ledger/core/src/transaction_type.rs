@@ -1,6 +1,6 @@
 use std::fmt;
 
-/// 交易類型;Display 值即 DB 的 transaction_type 與 API 的 type 字串。
+/// 交易類型;[`fmt::Display`] 值即 DB 的 `transaction_type` 與 API 的 `type` 字串。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionType {
     Grant,

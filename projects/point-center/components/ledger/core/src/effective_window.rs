@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 
 /// 到期:指定時刻或永久。
-/// Ord 為 `On(較早) < On(較晚) < Never`——即扣減順序「快到期先用、永久最後」。
+/// [`Ord`] 為 `On(較早) < On(較晚) < Never`——即扣減順序「快到期先用、永久最後」。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Expiry {
     On(DateTime<Utc>),
