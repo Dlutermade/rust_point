@@ -11,8 +11,10 @@
 
 mod deduction;
 mod effective_window;
+mod redemption_status;
 mod transaction_type;
 
 pub use deduction::{CustomerPoint, Deduction, DeductionError, deduct};
 pub use effective_window::{EffectiveWindow, EffectiveWindowError, EffectiveWindowPhase, Expiry};
+pub use redemption_status::{RedemptionStatus, RedemptionStatusError};
 pub use transaction_type::{TransactionType, TransactionTypeError};

@@ -5,6 +5,7 @@ use std::fmt;
 pub enum TransactionType {
     Grant,
     Redeem,
+    Release,
     Expire,
     Adjust,
 }
@@ -19,10 +20,10 @@ pub enum TransactionTypeError {
 }
 
 impl TransactionType {
-    /// 不變量:發點為正、兌換/到期為負、調整非零。
+    /// 不變量:發點/釋放回補為正、兌換/到期為負、調整非零。
     pub fn validate_amount_change(self, amount_change: i64) -> Result<(), TransactionTypeError> {
         let valid = match self {
-            Self::Grant => amount_change > 0,
+            Self::Grant | Self::Release => amount_change > 0,
             Self::Redeem | Self::Expire => amount_change < 0,
             Self::Adjust => amount_change != 0,
         };
@@ -41,6 +42,7 @@ impl fmt::Display for TransactionType {
         f.write_str(match self {
             Self::Grant => "grant",
             Self::Redeem => "redeem",
+            Self::Release => "release",
             Self::Expire => "expire",
             Self::Adjust => "adjust",
         })
@@ -57,6 +59,18 @@ mod tests {
         assert!(TransactionType::Grant.validate_amount_change(500).is_ok());
         assert!(TransactionType::Grant.validate_amount_change(0).is_err());
         assert!(TransactionType::Grant.validate_amount_change(-1).is_err());
+    }
+
+    #[test]
+    fn release_requires_positive_change() {
+        // then:取消釋放回補必為正數(與 redeem 成對、方向相反)
+        assert!(TransactionType::Release.validate_amount_change(400).is_ok());
+        assert!(TransactionType::Release.validate_amount_change(0).is_err());
+        assert!(
+            TransactionType::Release
+                .validate_amount_change(-400)
+                .is_err()
+        );
     }
 
     #[test]
@@ -81,6 +95,7 @@ mod tests {
         // then:Display 字串即 DB 欄位值
         assert_eq!(TransactionType::Grant.to_string(), "grant");
         assert_eq!(TransactionType::Redeem.to_string(), "redeem");
+        assert_eq!(TransactionType::Release.to_string(), "release");
         assert_eq!(TransactionType::Expire.to_string(), "expire");
         assert_eq!(TransactionType::Adjust.to_string(), "adjust");
     }
