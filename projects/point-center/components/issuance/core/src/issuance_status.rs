@@ -20,6 +20,12 @@ pub enum IssuanceStatusError {
     IssueNotAllowed(IssuanceStatus),
     #[error("cancel is not allowed from {0}")]
     CancelNotAllowed(IssuanceStatus),
+    #[error("start processing is not allowed from {0}")]
+    StartProcessingNotAllowed(IssuanceStatus),
+    #[error("complete is not allowed from {0}")]
+    CompleteNotAllowed(IssuanceStatus),
+    #[error("fail is not allowed from {0}")]
+    FailNotAllowed(IssuanceStatus),
 }
 
 impl IssuanceStatus {
@@ -49,6 +55,36 @@ impl IssuanceStatus {
             Self::Draft => Ok(Self::Cancelled),
             Self::Pending | Self::Processing | Self::Completed | Self::Failed | Self::Cancelled => {
                 Err(IssuanceStatusError::CancelNotAllowed(self))
+            }
+        }
+    }
+
+    /// worker 認領任務:pending → processing。
+    pub fn start_processing(self) -> Result<IssuanceStatus, IssuanceStatusError> {
+        match self {
+            Self::Pending => Ok(Self::Processing),
+            Self::Draft | Self::Processing | Self::Completed | Self::Failed | Self::Cancelled => {
+                Err(IssuanceStatusError::StartProcessingNotAllowed(self))
+            }
+        }
+    }
+
+    /// 全批入帳完成:processing → completed(不可逆終態)。
+    pub fn complete(self) -> Result<IssuanceStatus, IssuanceStatusError> {
+        match self {
+            Self::Processing => Ok(Self::Completed),
+            Self::Draft | Self::Pending | Self::Completed | Self::Failed | Self::Cancelled => {
+                Err(IssuanceStatusError::CompleteNotAllowed(self))
+            }
+        }
+    }
+
+    /// 永久性失敗或重試耗盡:processing → failed(可重入終態)。
+    pub fn fail(self) -> Result<IssuanceStatus, IssuanceStatusError> {
+        match self {
+            Self::Processing => Ok(Self::Failed),
+            Self::Draft | Self::Pending | Self::Completed | Self::Failed | Self::Cancelled => {
+                Err(IssuanceStatusError::FailNotAllowed(self))
             }
         }
     }
@@ -108,6 +144,43 @@ mod tests {
             IssuanceStatus::Cancelled.issue(),
             Err(IssuanceStatusError::IssueNotAllowed(
                 IssuanceStatus::Cancelled
+            ))
+        );
+    }
+
+    #[test]
+    fn worker_transitions_follow_claim_then_terminal() {
+        // when / then:認領僅限 pending
+        assert_eq!(
+            IssuanceStatus::Pending.start_processing(),
+            Ok(IssuanceStatus::Processing)
+        );
+        assert_eq!(
+            IssuanceStatus::Draft.start_processing(),
+            Err(IssuanceStatusError::StartProcessingNotAllowed(
+                IssuanceStatus::Draft
+            ))
+        );
+
+        // when / then:完成與失敗僅限 processing
+        assert_eq!(
+            IssuanceStatus::Processing.complete(),
+            Ok(IssuanceStatus::Completed)
+        );
+        assert_eq!(
+            IssuanceStatus::Processing.fail(),
+            Ok(IssuanceStatus::Failed)
+        );
+        assert_eq!(
+            IssuanceStatus::Pending.complete(),
+            Err(IssuanceStatusError::CompleteNotAllowed(
+                IssuanceStatus::Pending
+            ))
+        );
+        assert_eq!(
+            IssuanceStatus::Completed.fail(),
+            Err(IssuanceStatusError::FailNotAllowed(
+                IssuanceStatus::Completed
             ))
         );
     }

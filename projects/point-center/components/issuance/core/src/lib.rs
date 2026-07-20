@@ -9,7 +9,12 @@
 //! Compile-enforced: no tokio, no sqlx, no NATS in this crate.
 
 mod expiration_policy;
+mod issuance;
 mod issuance_status;
 
 pub use expiration_policy::{ExpirationPolicy, ExpirationPolicyError};
+pub use issuance::{
+    FailureReason, Issuance, IssuanceError, NewIssuance, RecipientList, StoredIssuance,
+    UploadSession,
+};
 pub use issuance_status::{IssuanceStatus, IssuanceStatusError};
