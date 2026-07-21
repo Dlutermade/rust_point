@@ -1466,11 +1466,13 @@ dependencies = [
  "async-nats",
  "async-trait",
  "chrono",
+ "point-center-db",
  "point-center-ledger-core",
  "serde",
  "serde_json",
  "sqlx",
  "thiserror",
+ "tokio",
  "tracing",
  "uuid",
 ]

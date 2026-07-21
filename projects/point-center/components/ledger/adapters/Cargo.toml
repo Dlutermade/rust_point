@@ -14,3 +14,8 @@ chrono.workspace = true
 async-trait.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+# 整合測試對真實 PG(Podman)跑;需 DATABASE_URL,未設則跳過。
+point-center-db.workspace = true
+tokio = { workspace = true }
