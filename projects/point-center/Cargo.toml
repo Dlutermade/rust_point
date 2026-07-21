@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3" # virtual manifest 沒有 edition,不明示會退回 resolver 1
 members = [
-    "components/*/*",
-    "apps/*",
+    "components/*/*", # 業務能力元件(core + adapters)
+    "apps/*",         # delivery shell + composition root
+    "platform/*",     # 技術 plumbing(db pool + migrator …),非業務
 ]
 
 [workspace.package]
@@ -12,6 +13,7 @@ edition = "2024"
 [workspace.dependencies]
 
 # ── internal ──
+point-center-db                = { path = "platform/db" }
 point-center-ledger-core       = { path = "components/ledger/core" }
 point-center-ledger-adapters   = { path = "components/ledger/adapters" }
 point-center-issuance-core     = { path = "components/issuance/core" }

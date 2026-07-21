@@ -37,7 +37,9 @@ projects/
   point-center/      # bounded context「點數中心」——自包含子樹
     Cargo.toml         # context 自己的 Cargo workspace(+ Cargo.lock)——一 project 一 workspace
     docker-compose.yml # 自有基礎設施:每個 context 有獨自的 DB(PostgreSQL)
-    Makefile           # context 級指令(up / 各 app / build / test / lint)
+    Makefile           # context 級指令(up / migrate / 各 app / build / test / lint)
+    platform/          # 技術 plumbing(非業務)
+      db/              # PgPool + sqlx migrator + migrations/(schema 真相來源)
     components/        # 業務能力元件(component = core + adapters)
       ledger/          # 帳本:批次、交易、FIFO、兌換/入帳/到期
       issuance/        # 發點流程:狀態機、上傳 session、任務處理

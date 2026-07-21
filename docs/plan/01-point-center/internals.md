@@ -58,6 +58,7 @@ Command 走 domain + tx;Query 直投影、無鎖無交易。
 - 清單本體不落 PG:存名單儲存,PG 只存 URI 與計數。
 - 自產 ID 一律 UUID v7(時間有序,批量插入索引順序寫)。
 - `source_id` 為呼叫端字串,不在 UUID 規範內。
+- schema 由 sqlx 管理:migration 檔在 `platform/db/migrations/`(序號版本、單一 `_sqlx_migrations` 序列、checksum 鎖定改動、遷移期 advisory lock);詳 tech/02 §4b。下方 DDL 為權威來源,migration 檔照它拆分。
 
 ```sql
 -- 發點紀錄(兼入帳進度追蹤)

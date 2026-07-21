@@ -26,6 +26,15 @@
 
 - root compose 只放共享 NATS。
 - 各 context 自有 DB;PG host port 依進場順序(5432、5433…)。
+- **PostgreSQL 18 映像**掛載點是 `/var/lib/postgresql`(非舊版 `/data`;PGDATA 落版本子目錄,為 pg_upgrade)。
+
+**4b. Schema 遷移(sqlx 管理)**
+
+- 技術 plumbing crate `platform/db`(`point-center-db`)持有:`PgPool` 建構 + 內嵌 `sqlx::migrate!` + 一支 `migrate` binary(`make migrate`)。
+- migration 檔在 `platform/db/migrations/`,序號版本 `NNNN_desc.sql`;一 DB 一 project、單一 `_sqlx_migrations` 序列。
+- sqlx 追蹤 checksum(**改動已套用的檔會被拒**)+ 遷移期 advisory lock(多 app/job 併發啟動安全)。
+- 跨 component 表在同一 context DB 共存(如 `customer_points → point_issuances` FK),故 migration 是 project 級、非 component 級;`platform/*` 收技術 crate,`components/` 維持純業務。
+- adapters 依賴 `platform/db` 取 `PgPool`;apps composition root 啟動時或部署 init step 跑 `migrate`。
 
 **5. Makefile 兩層**
 
@@ -62,6 +71,8 @@ Makefile  docker-compose.yml(NATS)  .vscode/settings.json
 projects/point-center/
   Cargo.toml + Cargo.lock          # 自己的 workspace
   docker-compose.yml(PG)  Makefile
+  platform/
+    db/{migrations, src}           # PgPool + sqlx migrator + migrate binary(非業務)
   components/
     ledger/{core, adapters}
     issuance/{core, adapters}

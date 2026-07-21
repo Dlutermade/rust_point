@@ -12,7 +12,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PostgreSQL 18 映像的掛載點是 /var/lib/postgresql(PGDATA 落在版本子目錄,
+      # 為 pg_upgrade 保留);掛在舊的 /data 會被映像拒絕啟動。
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app -d point_center"]
       interval: 5s

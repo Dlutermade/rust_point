@@ -1,4 +1,8 @@
-.PHONY: up down logs internal-api storefront-api grant-worker expiry-job build check fmt lint test
+.PHONY: up down logs migrate internal-api storefront-api grant-worker expiry-job build check fmt lint test
+
+# 本機開發預設連線;compose 的 point_center DB(app/app @ 5432)。
+DATABASE_URL ?= postgres://app:app@localhost:5432/point_center
+export DATABASE_URL
 
 # Container engine: inherited from the root Makefile when delegated;
 # auto-detected here when invoked directly (podman first, docker fallback).
@@ -14,6 +18,9 @@ down:          ## stop point-center owned infra
 
 logs:          ## follow point-center infra logs
 	$(COMPOSE) logs -f
+
+migrate:       ## apply pending migrations to DATABASE_URL (sqlx-tracked)
+	cargo run -q -p point-center-db --bin migrate
 
 # ── run (delivery shells) ──
 
