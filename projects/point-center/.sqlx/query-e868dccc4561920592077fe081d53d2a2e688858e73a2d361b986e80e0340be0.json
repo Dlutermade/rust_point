@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "-- 批量入帳:一列一批客戶點數。逐列變動的只有 (customer_point_id, customer_id),\n-- 以平行陣列經 UNNEST 展開;其餘欄位整批常數。永久點的 expires 由 COALESCE\n-- 收成 'infinity'。來源唯一鍵 + ON CONFLICT DO NOTHING 兜底防重複。\nINSERT INTO customer_points\n    (customer_point_id, shop_id, customer_id, original_amount, remaining_amount,\n     effective_at, expires_at, issuance_id, author, source_id)\nSELECT batch.point_id, $1, batch.customer_id, $2, $2,\n       $3, COALESCE($4, 'infinity'::timestamptz), $5, $6, $7\nFROM UNNEST($8::uuid[], $9::uuid[]) AS batch(point_id, customer_id)\nON CONFLICT (shop_id, author, source_id, customer_id) DO NOTHING\n",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Timestamptz",
+        "Timestamptz",
+        "Uuid",
+        "Text",
+        "Text",
+        "UuidArray",
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e868dccc4561920592077fe081d53d2a2e688858e73a2d361b986e80e0340be0"
+}

@@ -1,19 +1,14 @@
+use chrono::{DateTime, Utc};
 use point_center_ledger_core::Expiry;
-use sqlx::Postgres;
-use sqlx::query_builder::Separated;
 
-/// 把 [`Expiry`] 綁進一列 INSERT 的 `expires_at` 欄位。
+/// 寫入時把 [`Expiry`] 收成 nullable 綁定值:`On(ts)` → `Some(ts)`;
+/// `Never` → `None`,SQL 端以 `COALESCE($n, 'infinity')` 落成永久。
 ///
-/// chrono 無法表達 infinity,故永久點在此以 PG 字面 `'infinity'` 推入
-/// (DB 端 `expires_at > now()` 恆真、查詢零特判,見 internals);
-/// 有到期端則綁值。
-pub fn push_expires_at(row: &mut Separated<'_, Postgres, &'static str>, expiry: Expiry) {
+/// chrono 表達不了 infinity,故永久點在 Rust 側一律走 `None`,
+/// 只在 SQL 字面出現 `'infinity'`(DB 端 `expires_at > now()` 恆真)。
+pub fn expires_bind(expiry: Expiry) -> Option<DateTime<Utc>> {
     match expiry {
-        Expiry::On(expires_at) => {
-            row.push_bind(expires_at);
-        }
-        Expiry::Never => {
-            row.push("'infinity'::timestamptz");
-        }
+        Expiry::On(expires_at) => Some(expires_at),
+        Expiry::Never => None,
     }
 }
