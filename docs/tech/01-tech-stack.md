@@ -40,7 +40,7 @@
 
 - sqlx:async 原生、SQL 直寫——本專案核心價值在手寫 tx / `FOR UPDATE` / 條件式 UPDATE / 批量 INSERT。
 - **查詢走 `query_file!` + offline 編譯期檢查**(修訂:原 runtime `query` 放棄了編譯期查詢驗證;offline 模式同時給「編譯期檢查」與「建置不依賴活 DB」,兩者不互斥)。
-  - 查詢存 `queries/*.sql`(獨立檔:編輯器高亮 + SQL linter),`query_file!` 編譯期對 schema 驗欄位/型別。
+  - SQL 存 `sql/*.sql`(獨立檔:編輯器高亮 + SQL linter;讀寫皆然,故命名 `sql/` 而非 `queries/`),`query_file!` 編譯期對 schema 驗欄位/型別。
   - `.sqlx/` 快取(`cargo sqlx prepare --workspace`)check-in;建置讀快取、**不需活 DB**(CI / 他人建置零 DB)。
   - 工作流程:改查詢後 `make prepare`(需 DB 起)重產快取、進版控;CI 以 `cargo sqlx prepare --check` 擋過期。
   - 少數表達不了的(如 advisory lock)才落 runtime `query`。

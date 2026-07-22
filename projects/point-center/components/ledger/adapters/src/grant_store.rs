@@ -9,7 +9,7 @@ use crate::expiry_sql::expires_bind;
 ///
 /// 防重複靠兩張表的來源唯一鍵 + `ON CONFLICT DO NOTHING`:同來源同客戶
 /// 已入帳者自動跳過;回傳的入帳數即 `customer_points` 實際新增列數。
-/// SQL 在 `queries/*.sql`,以 `query_file!` 編譯期對 schema 檢查。
+/// SQL 在 `sql/*.sql`,以 `query_file!` 編譯期對 schema 檢查。
 pub struct PgGrantStore {
     pool: PgPool,
 }
@@ -44,7 +44,7 @@ impl GrantStore for PgGrantStore {
 
         // customer_points:一列一批,來源唯一鍵擋重複入帳。
         let granted = sqlx::query_file!(
-            "queries/grant_insert_points.sql",
+            "sql/grant_insert_points.sql",
             batch.shop_id,
             batch.amount_per_recipient,
             batch.window.effective_at(),
@@ -62,7 +62,7 @@ impl GrantStore for PgGrantStore {
 
         // point_transactions:grant(+),來源唯一鍵擋重複留痕,與上表同進退。
         sqlx::query_file!(
-            "queries/grant_insert_transactions.sql",
+            "sql/grant_insert_transactions.sql",
             batch.shop_id,
             batch.amount_per_recipient,
             batch.author,

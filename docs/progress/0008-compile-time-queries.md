@@ -14,7 +14,7 @@
 |------|--------|
 | 回改 tech/01:查詢走 `query_file!` + offline 編譯期檢查(原 runtime `query` 放棄了編譯期驗證) | tech/01 資料庫 |
 | 關鍵洞察:offline 模式「編譯期檢查」與「建置不依賴活 DB」**不互斥**——tech/01 當初當二選一是誤判 | tech/01 |
-| 查詢存 `components/ledger/adapters/queries/*.sql`(獨立檔:高亮 + linter);`query_file!` 對 schema 驗欄位/型別 | grant_store.rs、queries/ |
+| SQL 存 `components/ledger/adapters/sql/*.sql`(獨立檔:高亮 + linter;讀寫皆然,命名 `sql/`);`query_file!` 對 schema 驗欄位/型別 | grant_store.rs、sql/ |
 | `.sqlx/`(workspace root)快取 check-in;建置讀快取、不需活 DB;`make prepare` 重產、CI `--check` 擋過期 | Makefile、.sqlx/ |
 | dev/CI 需 sqlx-cli 0.9(對齊 sqlx 0.9,`.sqlx` 格式綁版本) | tech/01 |
 | 少數表達不了的查詢(advisory lock 等)才落 runtime `query` | tech/01 |
@@ -29,5 +29,5 @@
 
 ## 下一步
 
-- 其餘 ledger adapters(`RedemptionStore` 兩鎖策略、`ExpiryStore`、`LedgerQueries`)沿用 `queries/*.sql` + `query_file!`;改任何查詢後 `make prepare` 重產快取。
+- 其餘 ledger adapters(`RedemptionStore` 兩鎖策略、`ExpiryStore`、`LedgerQueries`)沿用 `sql/*.sql` + `query_file!`;改任何查詢後 `make prepare` 重產快取。
 - 再 issuance adapters → apps 組裝。
