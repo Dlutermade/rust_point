@@ -1,0 +1,39 @@
+@import 'tailwindcss';
+
+/* 品牌色與 antd colorPrimary 同源 → text-brand / bg-brand / border-brand */
+@theme {
+  --color-brand: #1677ff;
+}
+
+/* 編輯器面板重複樣式的語意 class(配 Tailwind 工具類用) */
+@layer components {
+  .field-label {
+    font-size: 14px;
+    color: #888;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* 全域字型 + 抗鋸齒:非 antd 元件(Tailwind div…)也吃同一套 CJK 字型,中文才不擠不糊。 */
+body {
+  font-family:
+    'Noto Sans TC',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'PingFang TC',
+    'Microsoft JhengHei',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}

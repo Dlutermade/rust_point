@@ -1,0 +1,32 @@
+{
+  "name": "@sc/blocks",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./dist/blocks.js",
+  "module": "./dist/blocks.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/blocks.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vite-plugin-dts": "^5.0.3"
+  }
+}

@@ -1,0 +1,27 @@
+// 區塊庫入口:匯入即註冊所有自訂元素,並匯出契約 + 註冊表。
+// 編輯器用它拿 schema(建表單)+ 掛自訂元素(即時預覽);
+// 未來前台載同一包 WC 做互動。
+export * from './contract'
+export * from './events'
+export * from './icons'
+export { SfBlockElement } from './block-element'
+export * from './registry'
+
+export { SfContainer } from './blocks/container'
+export type { ContainerData } from './blocks/container'
+export { SfStack } from './blocks/stack'
+export type { StackData } from './blocks/stack'
+export { SfHeading } from './blocks/heading'
+export type { HeadingData } from './blocks/heading'
+export { SfText } from './blocks/text'
+export type { TextData } from './blocks/text'
+export { SfButton } from './blocks/button'
+export type { ButtonData } from './blocks/button'
+export { SfImage } from './blocks/image'
+export type { ImageData } from './blocks/image'
+export { SfSpacer } from './blocks/spacer'
+export type { SpacerData } from './blocks/spacer'
+export { SfDivider } from './blocks/divider'
+export type { DividerData } from './blocks/divider'
+export { SfIcon } from './blocks/icon'
+export type { IconData } from './blocks/icon'

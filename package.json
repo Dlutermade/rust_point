@@ -1,0 +1,6 @@
+{
+  "name": "storefront-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "storefront-center 前端 monorepo(admin 編輯器 + blocks 區塊庫)"
+}
