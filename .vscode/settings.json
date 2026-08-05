@@ -2,13 +2,24 @@
   // 一 project 一 Cargo workspace(root 無 Cargo.toml)——
   // rust-analyzer 需明確掛載各 project 的 workspace;新 project 進場時在此加一行。
   "rust-analyzer.linkedProjects": [
-    "projects/point-center/Cargo.toml"
+    "projects/storefront-center/Cargo.toml"
   ],
+  // 前端統一走 oxfmt(設定在 root .oxfmtrc.json:單引號、無分號)。
+  // 四個 language id 都要列:.tsx 是 typescriptreact、.jsx 是 javascriptreact,
+  // 漏掉就會落回 VS Code 預設格式器,存檔即被改成雙引號 + 分號。
   "[javascript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.formatOnSave": true
   },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true
+  },
   "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true
+  },
+  "[typescriptreact]": {
     "editor.defaultFormatter": "oxc.oxc-vscode",
     "editor.formatOnSave": true
   }

@@ -1,0 +1,8 @@
+{
+  // settings.json 把前端四種 language id 的格式器都指向 oxc.oxc-vscode。
+  // 沒裝這個擴充套件時 formatOnSave 會靜默失效,存檔就會落回 VS Code 預設(雙引號 + 分號)。
+  "recommendations": [
+    "oxc.oxc-vscode",
+    "rust-lang.rust-analyzer"
+  ]
+}
