@@ -1,38 +1,65 @@
-.PHONY: up down logs build check fmt lint test
+.PHONY: run build check fmt lint test web-install web-build web-dev up down logs psql
 
 # Container engine: podman if present, otherwise docker.
 # Override anytime: make up COMPOSE="docker compose"
 COMPOSE ?= $(shell command -v podman >/dev/null 2>&1 && echo podman compose || echo docker compose)
 export COMPOSE
 
-# ── shared infrastructure (NATS message bus) + project coordination ──
-# All project-specific targets (run, infra, cargo) live in projects/<name>/Makefile.
-# One Cargo workspace per project; adding a project = add its delegation lines here.
+# One Rust project (storefront-center) plus a pnpm workspace for the front end
+# (projects/admin editor, projects/blocks web components). Root has no Cargo.toml:
+# each project owns its Cargo workspace, so cargo runs via --manifest-path.
+CARGO ?= cargo
+SC := projects/storefront-center
+MANIFEST := --manifest-path $(SC)/Cargo.toml
 
-up:            ## start shared infra (NATS), then every project's own infra
-	$(COMPOSE) up -d
-	$(MAKE) -C projects/point-center up
+# ── Rust: storefront-center ──
 
-down:          ## stop every project's infra, then shared infra
-	$(MAKE) -C projects/point-center down
-	$(COMPOSE) down
-
-logs:          ## follow shared infra logs
-	$(COMPOSE) logs -f
-
-# ── cargo (delegated: one workspace per project) ──
+run:           ## serve on BIND_ADDR (default 0.0.0.0:3000)
+	$(CARGO) run $(MANIFEST)
 
 build:
-	$(MAKE) -C projects/point-center build
+	$(CARGO) build $(MANIFEST)
 
 check:
-	$(MAKE) -C projects/point-center check
+	$(CARGO) check $(MANIFEST)
 
 fmt:
-	$(MAKE) -C projects/point-center fmt
+	$(CARGO) fmt $(MANIFEST)
 
 lint:
-	$(MAKE) -C projects/point-center lint
+	$(CARGO) clippy $(MANIFEST) --all-targets
 
 test:
-	$(MAKE) -C projects/point-center test
+	$(CARGO) test $(MANIFEST)
+
+# ── Front end: pnpm workspace ──
+# admin resolves @sc/blocks through its dist/, so blocks builds first.
+
+web-install:
+	pnpm install
+
+web-build:
+	pnpm --filter @sc/blocks build
+	pnpm --filter admin build
+
+web-dev:       ## admin editor on the vite dev server
+	pnpm --filter @sc/blocks build
+	pnpm --filter admin dev
+
+# ── Infrastructure (one compose project per context) ──
+# Each context owns its stack in projects/<name>/docker-compose.yml. Root holds
+# no compose file: there is nothing shared to run yet. A cross-context event bus
+# comes back as a shared compose when a second subscribing context lands
+# (see docs/plan/backlog.md).
+
+up:            ## start storefront-center's Postgres + Valkey
+	$(COMPOSE) -f $(SC)/docker-compose.yml up -d
+
+down:
+	$(COMPOSE) -f $(SC)/docker-compose.yml down
+
+logs:
+	$(COMPOSE) -f $(SC)/docker-compose.yml logs -f
+
+psql:          ## interactive shell on the storefront database
+	$(COMPOSE) -f $(SC)/docker-compose.yml exec postgres psql -U storefront -d storefront

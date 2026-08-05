@@ -1,0 +1,42 @@
+# storefront-center's own infrastructure — one compose project per context.
+# Nothing here is shared: this whole stack goes up and down with this context,
+# and other contexts never reach into it (no shared DB across contexts).
+name: storefront-center
+
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_USER: storefront
+      POSTGRES_PASSWORD: storefront
+      POSTGRES_DB: storefront
+    # Host ports are overridable: 5432 is routinely taken by another project's
+    # database on a dev machine, so this stack defaults one off it.
+    ports:
+      - "${SF_PG_PORT:-5433}:5432"
+    # postgres:18 keeps PGDATA at /var/lib/postgresql/18/docker and declares the
+    # volume one level up — mounting the pre-18 /var/lib/postgresql/data would
+    # silently not persist.
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storefront -d storefront"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:9.1.1-alpine
+    # Cache / feature store only — nothing here is authoritative, so no
+    # persistence: no RDB snapshots, no AOF.
+    command: ["valkey-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${SF_VALKEY_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
