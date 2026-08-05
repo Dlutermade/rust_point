@@ -20,8 +20,11 @@ body,
   margin: 0;
 }
 
-/* 全域字型 + 抗鋸齒:非 antd 元件(Tailwind div…)也吃同一套 CJK 字型,中文才不擠不糊。 */
+/* 全域字型 + 字級 + 抗鋸齒:非 antd 元件(Tailwind div…)也吃同一套 CJK 字型,中文才不擠不糊。
+   font-size 必須跟 main.tsx 的 antd token 對齊 —— 不設的話 body 會落在瀏覽器預設 16px,
+   而 antd 元件是 14px,同一個畫面就出現兩套字級(編輯器面板明顯比表格大一號)。 */
 body {
+  font-size: 14px;
   font-family:
     'Noto Sans TC',
     -apple-system,

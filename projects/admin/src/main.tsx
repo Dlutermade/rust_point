@@ -25,7 +25,11 @@ createRoot(document.getElementById('root')!).render(
     <ConfigProvider
       locale={zhTW}
       theme={{
-        token: { colorPrimary: '#1677ff', fontFamily: FONT_FAMILY, fontSize: 16, lineHeight: 1.6 },
+        // fontSize 沿用 antd 預設 14:字級階梯(fontSizeLG / heading 系列)全由它推導,
+        // 調成 16 會讓整個後台連標題、表格一起放大。lineHeight 略放寬給中文喘息空間。
+        // ⚠️ 改這個值時 index.css 的 body font-size 要一起改 —— antd 的 cssVar 變數掛在它自己
+        // 產生的 scope class 上,body 讀不到,所以非 antd 區域只能另外對齊。
+        token: { colorPrimary: '#1677ff', fontFamily: FONT_FAMILY, fontSize: 14, lineHeight: 1.6 },
       }}
     >
       <AntdApp>
