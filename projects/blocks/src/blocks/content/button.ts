@@ -1,11 +1,11 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import { customElement } from '../register-element'
-import type { BlockAction, BlockType } from '../contract'
-import { actionHref } from '../contract'
-import { SfBlockElement } from '../block-element'
-import { SF_EVENTS } from '../events'
-import { resetStyles } from '../reset'
+import { customElement } from '../../core/register-element'
+import type { BlockAction, BlockType } from '../../contract'
+import { actionHref } from '../../contract'
+import { SfBlockElement } from '../../core/block-element'
+import { SF_EVENTS } from '../../events'
+import { resetStyles } from '../../styles/reset'
 
 export interface ButtonData {
   text?: string
@@ -38,8 +38,14 @@ export class SfButton extends SfBlockElement {
       cursor: pointer;
       border: 1px solid #1677ff;
     }
-    .primary { background: #1677ff; color: #fff; }
-    .outline { background: transparent; color: #1677ff; }
+    .primary {
+      background: #1677ff;
+      color: #fff;
+    }
+    .outline {
+      background: transparent;
+      color: #1677ff;
+    }
   `
 
   render() {
@@ -47,7 +53,6 @@ export class SfButton extends SfBlockElement {
     const cls = `btn ${d.variant ?? 'primary'}`
     const href = actionHref(d.action)
     const inner = d.text ?? '按鈕'
-    // 純導航 → <a href>(SEO);行為型 → <button> 發事件。
     const el = href
       ? html`<a class=${cls} href=${href} @click=${this._nav}>${inner}</a>`
       : html`<button class=${cls} type="button" @click=${this._act}>${inner}</button>`
@@ -94,7 +99,12 @@ export const buttonType: BlockType = {
       },
     ],
   },
-  defaults: { text: '立即選購', action: { kind: 'begin_checkout' }, variant: 'primary', align: 'left' },
+  defaults: {
+    text: '立即選購',
+    action: { kind: 'begin_checkout' },
+    variant: 'primary',
+    align: 'left',
+  },
 }
 
 declare global {

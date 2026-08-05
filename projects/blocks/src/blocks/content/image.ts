@@ -1,11 +1,11 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import { customElement } from '../register-element'
-import type { BlockAction, BlockType } from '../contract'
-import { actionHref } from '../contract'
-import { SfBlockElement } from '../block-element'
-import { SF_EVENTS } from '../events'
-import { resetStyles } from '../reset'
+import { customElement } from '../../core/register-element'
+import type { BlockAction, BlockType } from '../../contract'
+import { actionHref } from '../../contract'
+import { SfBlockElement } from '../../core/block-element'
+import { SF_EVENTS } from '../../events'
+import { resetStyles } from '../../styles/reset'
 
 export interface ImageData {
   src?: string
@@ -23,10 +23,24 @@ export class SfImage extends SfBlockElement {
 
   static styles = css`
     ${resetStyles}
-    :host { display: block; }
-    .wrap { position: relative; width: 100%; height: 100%; }
-    img { display: block; width: 100%; height: 100%; }
-    .scrim { position: absolute; inset: 0; pointer-events: none; }
+    :host {
+      display: block;
+    }
+    .wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .scrim {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
     .link {
       display: block;
       width: 100%;

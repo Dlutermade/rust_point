@@ -1,4 +1,4 @@
-import { blockTypes } from './index'
+import { blockTypes } from '../index'
 
 // 把每個區塊型別用預設值掛出來,單機視覺驗證。
 const gallery = document.getElementById('gallery')

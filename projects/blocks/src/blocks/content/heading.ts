@@ -1,9 +1,9 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import { customElement } from '../register-element'
-import type { BlockType } from '../contract'
-import { SfBlockElement } from '../block-element'
-import { resetStyles } from '../reset'
+import { customElement } from '../../core/register-element'
+import type { BlockType } from '../../contract'
+import { SfBlockElement } from '../../core/block-element'
+import { resetStyles } from '../../styles/reset'
 
 export interface HeadingData {
   text?: string
@@ -20,11 +20,21 @@ export class SfHeading extends SfBlockElement {
 
   static styles = css`
     ${resetStyles}
-    :host { display: block; }
-    .h { font-weight: 700; }
-    .h1 { font-size: 32px; }
-    .h2 { font-size: 24px; }
-    .h3 { font-size: 19px; }
+    :host {
+      display: block;
+    }
+    .h {
+      font-weight: 700;
+    }
+    .h1 {
+      font-size: 32px;
+    }
+    .h2 {
+      font-size: 24px;
+    }
+    .h3 {
+      font-size: 19px;
+    }
   `
 
   render() {

@@ -1,10 +1,10 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import { customElement } from '../register-element'
-import type { BlockType, Spacing } from '../contract'
-import { toSpacing } from '../contract'
-import { SfBlockElement } from '../block-element'
-import { resetStyles } from '../reset'
+import { customElement } from '../../core/register-element'
+import type { BlockType, Spacing } from '../../contract'
+import { toSpacing } from '../../contract'
+import { SfBlockElement } from '../../core/block-element'
+import { resetStyles } from '../../styles/reset'
 
 export interface ContainerData {
   direction?: 'row' | 'column'
@@ -24,7 +24,7 @@ export interface ContainerData {
 }
 
 // 強度決定位移/模糊/不透明度;顏色由 shadowColor 帶入。
-const SHADOWS: Record<string, { y: number, blur: number, a: number }> = {
+const SHADOWS: Record<string, { y: number; blur: number; a: number }> = {
   sm: { y: 1, blur: 3, a: 0.12 },
   md: { y: 4, blur: 14, a: 0.14 },
   lg: { y: 12, blur: 32, a: 0.18 },
@@ -32,7 +32,13 @@ const SHADOWS: Record<string, { y: number, blur: number, a: number }> = {
 
 function shadowRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '')
-  const n = h.length === 3 ? h.split('').map((c) => c + c).join('') : h
+  const n =
+    h.length === 3
+      ? h
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : h
   const r = Number.parseInt(n.slice(0, 2), 16) || 0
   const g = Number.parseInt(n.slice(2, 4), 16) || 0
   const b = Number.parseInt(n.slice(4, 6), 16) || 0
@@ -49,9 +55,16 @@ export class SfContainer extends SfBlockElement {
 
   static styles = css`
     ${resetStyles}
-    :host { display: block; }
-    .c { display: flex; box-sizing: border-box; }
-    ::slotted(*) { min-width: 0; }
+    :host {
+      display: block;
+    }
+    .c {
+      display: flex;
+      box-sizing: border-box;
+    }
+    ::slotted(*) {
+      min-width: 0;
+    }
   `
 
   render() {
@@ -59,8 +72,12 @@ export class SfContainer extends SfBlockElement {
     const gap = toSpacing(d.gap, 16)
     const pad = toSpacing(d.padding, 16)
     const s = SHADOWS[d.shadow ?? 'md']
-    const shadow = d.shadowOn ? `0 ${s.y}px ${s.blur}px ${shadowRgba(d.shadowColor ?? '#000000', s.a)}` : ''
-    const border = d.borderOn ? `border:${d.borderWidth ?? 1}px solid ${d.borderColor ?? '#e5e5e5'}` : ''
+    const shadow = d.shadowOn
+      ? `0 ${s.y}px ${s.blur}px ${shadowRgba(d.shadowColor ?? '#000000', s.a)}`
+      : ''
+    const border = d.borderOn
+      ? `border:${d.borderWidth ?? 1}px solid ${d.borderColor ?? '#e5e5e5'}`
+      : ''
     const style = [
       `flex-direction:${d.direction ?? 'column'}`,
       `justify-content:${d.justify ?? 'flex-start'}`,
@@ -125,11 +142,17 @@ export const containerType: BlockType = {
       { key: 'padding', label: '內距 X/Y', type: 'spacing', min: 0, max: 120, step: 2 },
       { key: 'background', label: '背景色', type: 'color' },
       { key: 'radius', label: '圓角', type: 'number', min: 0, max: 40, step: 2 },
-      // 邊框:先開關,開了才露出顏色 / 粗細。
       { key: 'borderOn', label: '邊框', type: 'boolean' },
       { key: 'borderColor', label: '邊框顏色', type: 'color', showIf: { key: 'borderOn' } },
-      { key: 'borderWidth', label: '邊框粗細', type: 'number', min: 1, max: 8, step: 1, showIf: { key: 'borderOn' } },
-      // 陰影:先開關,開了才選強度。
+      {
+        key: 'borderWidth',
+        label: '邊框粗細',
+        type: 'number',
+        min: 1,
+        max: 8,
+        step: 1,
+        showIf: { key: 'borderOn' },
+      },
       { key: 'shadowOn', label: '陰影', type: 'boolean' },
       {
         key: 'shadow',

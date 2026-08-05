@@ -1,8 +1,8 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import { customElement } from '../register-element'
-import type { BlockType } from '../contract'
-import { SfBlockElement } from '../block-element'
+import { customElement } from '../../core/register-element'
+import type { BlockType } from '../../contract'
+import { SfBlockElement } from '../../core/block-element'
 
 export interface DividerData {
   orientation?: 'auto' | 'horizontal' | 'vertical'

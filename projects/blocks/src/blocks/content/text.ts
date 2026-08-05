@@ -1,9 +1,9 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import { customElement } from '../register-element'
-import type { BlockType } from '../contract'
-import { SfBlockElement } from '../block-element'
-import { resetStyles } from '../reset'
+import { customElement } from '../../core/register-element'
+import type { BlockType } from '../../contract'
+import { SfBlockElement } from '../../core/block-element'
+import { resetStyles } from '../../styles/reset'
 
 export interface TextData {
   text?: string
@@ -33,10 +33,9 @@ export class SfText extends SfBlockElement {
 
   render() {
     const d = this.data
-    return html`<p
-      class="text"
-      style="text-align:${d.align ?? 'left'};color:${d.color ?? '#333'}"
-    >${d.text ?? ''}</p>`
+    const style = `text-align:${d.align ?? 'left'};color:${d.color ?? '#333'}`
+    // 內文是 pre-wrap,標籤與 ${} 之間不能有換行縮排 —— 那些空白會被原樣渲染成空行。
+    return html`<p class="text" style=${style}>${d.text ?? ''}</p>`
   }
 }
 

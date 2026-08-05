@@ -1,10 +1,10 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
-import { customElement } from '../register-element'
-import type { BlockType, Spacing } from '../contract'
-import { toSpacing } from '../contract'
-import { SfBlockElement } from '../block-element'
-import { resetStyles } from '../reset'
+import { customElement } from '../../core/register-element'
+import type { BlockType, Spacing } from '../../contract'
+import { toSpacing } from '../../contract'
+import { SfBlockElement } from '../../core/block-element'
+import { resetStyles } from '../../styles/reset'
 
 export interface StackData {
   bgColor?: string
@@ -23,11 +23,18 @@ export class SfStack extends SfBlockElement {
 
   static styles = css`
     ${resetStyles}
-    :host { display: block; }
+    :host {
+      display: block;
+    }
     /* overflow:hidden:疊層是堆疊/hero 容器,子區塊(如背景圖)超出邊界要裁掉,不外溢蓋到頁首/頁尾 */
-    .stack { position: relative; box-sizing: border-box; overflow: hidden; }
-    /* 子區塊絕對定位、同一個 relative 容器內堆疊;自然順序決定上下(後者在上) */
-    ::slotted(*) { position: absolute; }
+    .stack {
+      position: relative;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    ::slotted(*) {
+      position: absolute;
+    }
   `
 
   render() {

@@ -1,5 +1,5 @@
 import { LitElement } from 'lit'
-import { SF_EVENTS, emitEvent } from './events'
+import { SF_EVENTS, emitEvent } from '../events'
 
 // 區塊基底:所有區塊繼承它,自動走 event-routing 發「觀察型」事件——
 // 曝光(進視窗一次,view_promotion)、hover(首次滑入,block_hover)。

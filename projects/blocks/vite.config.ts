@@ -6,7 +6,8 @@ import dts from 'vite-plugin-dts'
 // lit 設為 external → 由消費端去重,不重複打包。
 // dev(vite)仍服務 index.html demo,不受 lib 設定影響。
 export default defineConfig({
-  plugins: [dts({ include: ['src'] })],
+  // src/dev 只服務 index.html demo,不是套件 API → 不進型別輸出。
+  plugins: [dts({ include: ['src'], exclude: ['src/dev'] })],
   build: {
     lib: {
       entry: 'src/index.ts',
