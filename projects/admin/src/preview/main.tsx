@@ -45,7 +45,6 @@ function Preview() {
     const uninstall = installEventRouter(document, {
       execute: (e: SfEvent) => {
         if (e.name === 'view_promotion' || e.name === 'block_hover') return
-        // eslint-disable-next-line no-console
         console.info(`(模擬前台)${e.name}`, e.params ?? {})
       },
       sinks: [consoleSink],

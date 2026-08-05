@@ -112,12 +112,10 @@ function BlockViewInner({
   const setNode = useCallback((el: (HTMLElement & { data?: unknown }) | null) => {
     nodeRef.current = el
     apply(el)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // instance 更新時重塞(同一元素、非 remount);remount 由上面的 callback ref 同步處理。
   useLayoutEffect(() => {
     apply(nodeRef.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance.data, instance.size, instance.pos, parentAxis])
 
   const bt = blockTypeMap[instance.type]

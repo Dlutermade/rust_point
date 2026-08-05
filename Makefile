@@ -1,4 +1,4 @@
-.PHONY: run build check fmt lint test web-install web-build web-dev up down logs psql
+.PHONY: run build check fmt lint test web-install web-build web-dev web-lint web-fmt web-fmt-check up down logs psql
 
 # Container engine: podman if present, otherwise docker.
 # Override anytime: make up COMPOSE="docker compose"
@@ -34,9 +34,21 @@ test:
 
 # ── Front end: pnpm workspace ──
 # admin resolves @sc/blocks through its dist/, so blocks builds first.
+# oxlint/oxfmt are shared from the workspace root (.oxlintrc.json / .oxfmtrc.json)
+# and are pointed at the two JS packages explicitly — they never walk into
+# projects/storefront-center. Rust keeps its own lint/fmt above (clippy/rustfmt).
 
 web-install:
 	pnpm install
+
+web-lint:
+	pnpm lint
+
+web-fmt:
+	pnpm format
+
+web-fmt-check:
+	pnpm format:check
 
 web-build:
 	pnpm --filter @sc/blocks build

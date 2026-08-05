@@ -79,9 +79,12 @@ make run           # storefront-center,預設 0.0.0.0:3000
 make web-dev       # admin 編輯器(先 build blocks,再起 vite)
 make check         # cargo check
 make test          # cargo test(⚠️ 目前 0 個測試)
-make lint fmt      # clippy / rustfmt
+make lint fmt      # Rust:clippy / rustfmt
+make web-lint      # 前端:oxlint(web-fmt / web-fmt-check 同理)
 make psql          # 資料庫 shell
 ```
+
+**兩套工具鏈各管各的**:Rust 走 cargo(clippy / rustfmt),前端走 oxlint + oxfmt。前端設定只有 root 這一份(`.oxlintrc.json` / `.oxfmtrc.json`),指令明確指向 `projects/admin/src` 與 `projects/blocks/src`,不會走進 Rust 專案。
 
 **基礎設施一 context 一份 compose**,住在 `projects/<name>/docker-compose.yml`;root 沒有 compose —— 現在沒有任何跨 context 共用的東西。等第二個訂閱方 context 進場,跨 context 事件骨幹才會以共用 compose 回到 root(見 [backlog](docs/plan/backlog.md))。
 

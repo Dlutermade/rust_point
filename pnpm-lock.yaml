@@ -6,7 +6,14 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      oxfmt:
+        specifier: ^0.61.0
+        version: 0.61.0
+      oxlint:
+        specifier: ^1.77.0
+        version: 1.77.0
 
   projects/admin:
     dependencies:
@@ -83,12 +90,6 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^6.0.3
         version: 6.0.5(vite@8.2.0(@types/node@24.13.3)(jiti@2.7.0))
-      oxfmt:
-        specifier: ^0.61.0
-        version: 0.61.0
-      oxlint:
-        specifier: ^1.71.0
-        version: 1.77.0
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3

@@ -40,8 +40,8 @@ pnpm install                      # 在 repo root 跑(pnpm workspace)
 pnpm --filter @sc/blocks build    # admin 透過 dist/ 解析 @sc/blocks,需先 build
 pnpm dev                          # vite dev server
 pnpm build                        # tsc -b && vite build
-pnpm lint                         # oxlint
-pnpm format                       # oxfmt src
 ```
+
+lint / format **不在本套件**:oxlint 與 oxfmt 的設定與指令統一在 repo root(`pnpm lint` / `pnpm format`,或 `make web-lint` / `make web-fmt`),一份設定同時管 admin 與 blocks。
 
 repo root 也有 `make web-dev`(自動先 build blocks)與 `make web-build`。
