@@ -40,7 +40,18 @@ curl localhost:3000/api/slots/home/templates   # 種子資料
 
 `BIND_ADDR` 覆寫監聽位址。
 
-## 之後需要的 infra(本機無 Docker,待張羅)
+## Infra
 
-- **PostgreSQL**(權威 store)、**Valkey**(快取 / feature store,不用 Redis)。
-- 編輯器前端:React + Antd + TanStack(**Node 26 + pnpm**)。
+本 context 自有一份 [`docker-compose.yml`](docker-compose.yml)(一 context 一 compose,不與別的 context 共用 DB):
+
+```
+make up      # PostgreSQL(權威 store)+ Valkey(快取 / feature store,不用 Redis)
+make psql    # 進資料庫 shell
+make down
+```
+
+host port 預設 **PG 5433**(5432 在開發機上常被別的專案佔著)、**Valkey 6379**,可用 `SF_PG_PORT` / `SF_VALKEY_PORT` 覆寫。連線字串見 [`.env.example`](.env.example)。
+
+`migrations/0001_init.sql` 已對 PG 18 驗證可套用,但**刻意留白不自動套** —— migration 由之後的 sqlx adapter 接管(比照 point-center 的 `platform/db` 做法),現在手動套會擋住它。
+
+編輯器前端在 [`projects/admin`](../admin/)(React + Antd + TanStack),區塊庫在 [`projects/blocks`](../blocks/)。

@@ -1,97 +1,95 @@
-# rust_point — 電商後端 monorepo
+# 電商後端 monorepo
 
-以 Rust 打造的電商後端 monorepo:一個 bounded context 一顆自包含子樹,context 內採 **Package by Component**。第一個 context 為**點數中心(point-center)**:發點入帳、兌換(防超扣)、餘額與到期、交易帳本。未來的 `order`、`member`、`dispatch` 等 context 陸續進場,各自成家。
+一個 bounded context 一顆自包含子樹,各自成家:自有 Cargo workspace、自有基礎設施、自有指令。context 之間禁止 Cargo 依賴、禁止共用 DB,只透過公開 API 與事件溝通。
 
-> **目前狀態:規格設計階段**——採文件先行的迭代開發,規格審查通過後才動工。
+建置順序見 [docs/plan/roadmap.md](docs/plan/roadmap.md):**前台中心 → 商品中心 → 回前台 → 訂單中心 → 回前台 → 商品折扣**。前台先立起來當底座,後面每個中心都有地方落地。
 
-## 系統邊界
+## 現況
 
-點數中心**只做帳務**;「何時發、發給誰」(發送排程器、動態名單)屬於其他限界上下文,透過公開 API 對接:
+**建置第 1 步:前台中心(storefront-center)** —— 可客製化的前台頁面系統,頁面 layout 以 Tree 定義,後台可編排內容 / 排版 / 曝光版位。v1 不含登入、商品、結帳。
 
-```
-┌─ 外部呼叫方 ────────────┐
-│ 營運後台(人工)          │           ┌──────── 點數中心(本系統)────────┐
-│ 發送排程器(未來 app)    │──公開 API──▶│ 發點入帳 │ 兌換 │ 餘額/到期 │ 帳本 │
-│ 名單中心(推送 JSONL)    │           └──────────────────────────────────┘
-└─────────────────────────┘
-```
+| 里程碑 | 狀態 |
+|--------|------|
+| M1 骨架(axum + 設定 + 多租戶解析) | ✅ 多租戶仍是 stub |
+| M2 編輯 API | ✅ 跑在記憶體 store 上,**DB 未接** |
+| M3 區塊型別系統 | 🟡 前端 9 個 Web Components 已成;Rust 端 SSR 渲染未動 |
+| M4 渲染引擎(靜態) | ⬜ 公開頁仍是 placeholder |
+| M5 編輯器前端 | 🟡 編輯器已完整,但資料源仍是 mock |
+| M6 打通 | ⬜ 前後端尚未接線 |
 
-## 核心設計亮點
+**紅利點數中心(point-center)** 已規劃完成但 **parked**,實作全數移除,只留商業規格 [docs/plan/01-point-center/](docs/plan/01-point-center/);等前台 / 商品 / 訂單 / 會員就緒後回來接。
 
-- **一次發點 = 一個任務**:千萬級名單以 JSONL 串流上傳(可續傳)、單一任務批量入帳,不逐人排隊。
-- **來源即冪等**:每筆異動必帶 `(author, sourceId)`,重送保護、防重複給點、帳務溯源三合一,無人工冪等鍵。
-- **絕不超扣**:悲觀鎖(`SELECT … FOR UPDATE`)與樂觀條件式更新兩種兌換策略,可切換對比壓測。
-- **生效窗**:點數具 `[生效, 到期)` 時間窗,查詢級瞬間生效,不依賴排程。
-- **必達終態**:發點任務保證到達 `completed` 或 `failed`,崩潰(OOM / container 被收)靠訊息層自癒、冪等續跑。
-- **多租戶**:`shop_id` 為一切唯一鍵與查詢之首,跨 shop 結構性隔離。
-- **軟刪除**:無物理 DELETE;刪除語意以狀態表達(如 `:cancel`),帳本 append-only。
-
-## 架構
-
-兩層結構:**monorepo 層 = bounded context 各自成家**(`projects/` 一 context 一子樹:components、apps、自有基礎設施與指令收在一起);**context 內 = Package by Component**(component = 業務能力 + 它的資料存取,只暴露公開 API),component 內部是六角 × 乾淨架構 × CQRS,`apps/` 只是 shell:
+## 佈局
 
 ```
-docker-compose.yml   # 共享基礎設施:只放跨 context 的 NATS 訊息匯流排
-Makefile             # 協調:up/down 與 cargo 指令逐 project 轉發(root 無 Cargo.toml)
+Makefile             # cargo(storefront-center)+ pnpm(前端)+ compose
+pnpm-workspace.yaml  # 前端 workspace:admin + blocks
+docs/
+  plan/              # 規格:商業視角先行,技術視角後補
+  tech/              # 跨 context 技術決策(選型 / 佈局 / 觀測)
+  progress/          # 決策軌跡
 projects/
-  point-center/      # bounded context「點數中心」——自包含子樹
-    Cargo.toml         # context 自己的 Cargo workspace(+ Cargo.lock)——一 project 一 workspace
-    docker-compose.yml # 自有基礎設施:每個 context 有獨自的 DB(PostgreSQL)
-    Makefile           # context 級指令(up / migrate / 各 app / build / test / lint)
-    platform/          # 技術 plumbing(非業務)
-      db/              # PgPool + sqlx migrator + migrations/(schema 真相來源)
-    components/        # 業務能力元件(component = core + adapters)
-      ledger/          # 帳本:批次、交易、FIFO、兌換/入帳/到期
-      issuance/        # 發點流程:狀態機、上傳 session、任務處理
-    apps/              # shell:delivery + composition root,不含業務
-      internal-api/    # 後台:發點生命週期(UC-1/5/6)
-      storefront-api/  # 前台系統串接:兌換/餘額/交易(UC-2/3/4)
-      grant-worker/    # NATS consumer(入帳管線)
-      expiry-job/      # run-to-completion 到期清掃(排程外部化)
+  storefront-center/ # bounded context「前台中心」(Rust,自有 Cargo workspace)
+    docker-compose.yml # 自有基礎設施:Postgres + Valkey
+    migrations/        # Postgres schema —— Model B,尚未套用
+    src/
+      api/             # 公開頁服務(訪客)+ 編輯 API(商家後台)
+      store/           # 資料存取 port(async trait)+ InMemoryStore
+      domain.rs        # 模板 / 狀態 / 版位
+      tenant.rs        # 多租戶解析(stub)
+  admin/             # 編輯器前端(React + Antd + TanStack)
+  blocks/            # 區塊庫(Lit Web Components,@sc/blocks)
 ```
 
-編譯期強制:component 只暴露公開 API(crate 可視性)、core 不列 tokio/sqlx/NATS、跨 component 僅 `issuance-core → ledger-core`(grant API)。**context 之間禁止 Cargo 依賴、禁止共用 DB**(一 project 一 Cargo workspace、root 無 Cargo.toml,隔離是結構性的),只透過公開 API 與 NATS 事件溝通;未來的 context(`order`、`member`、`dispatch`…)進場即各自成家。
+資料存取藏在 `Store` async trait 後,Postgres(sqlx)adapter 之後替換不動 API 層。狀態機與不可變性規則(已發布凍結、常態版不可暫停 / 刪除、每版位單一站台預設)現在寫在 store 實作裡,換 PG 時搬進 SQL / 交易。
 
 ## 技術棧
 
 | 層面 | 選型 |
 |------|------|
 | Runtime / HTTP | tokio + axum |
-| 訊息 | NATS JetStream(async-nats) |
-| 資料庫 | PostgreSQL + sqlx |
-| 名單儲存 | v1 本機檔案系統 → 正式 GCS(`RecipientListStore` port) |
-| ID | UUID v7(全域統一規範) |
-| 觀測 | tracing + OpenTelemetry(OTLP;dev 後端 grafana/otel-lgtm) |
+| 前台渲染 | 純 Rust SSR(Maud / Askama)+ render plan 編譯(M4) |
+| 資料庫 | PostgreSQL + JSONB + sqlx |
+| 快取 | moka(行程內)+ Valkey(共享) |
+| 編輯器 | React + Antd + TanStack Router / Query(pnpm) |
+| 區塊 | Lit Web Components |
+| 資產 | GCS / 本機 FS |
+| ID | UUID v7 |
+| 觀測 | tracing + OpenTelemetry |
 
-完整選型理由與替代方案:[docs/tech/01-tech-stack.md](docs/tech/01-tech-stack.md)
+完整理由與替代方案:[docs/tech/01-tech-stack.md](docs/tech/01-tech-stack.md)、[02-storefront-center/technical/01-decisions.md](docs/plan/02-storefront-center/technical/01-decisions.md)
 
 ## 文件
 
 | 系列 | 內容 |
 |------|------|
-| [docs/plan/](docs/plan/) | 業務規格(Use Case 合約、Domain 設計、DB 設計、狀態圖與時序圖、驗收條件) |
-| [docs/tech/](docs/tech/) | 技術決策紀錄(選型、理由、替代方案、工程規約) |
+| [docs/plan/](docs/plan/) | 規格。每個 context 一個編號資料夾,`business/`(PO 觀點、零技術)先行,`technical/` 後補 |
+| [docs/tech/](docs/tech/) | 跨 context 技術決策紀錄 |
+| [docs/progress/](docs/progress/) | 決策軌跡(現在式規格 + 過程分離) |
+| [docs/plan/backlog.md](docs/plan/backlog.md) | 跨 context、未排程的議題池 |
 
-文件採編號迭代(`01-…`、`02-…`),先審查後實作;內容維持現在式,決策軌跡記於 [docs/progress/](docs/progress/);跨 context 未排程議題在 [docs/plan/backlog.md](docs/plan/backlog.md)。
+文件採編號迭代,**先審查後實作**。
 
-## 開發流程(規劃)
+## 開發
 
 ```bash
-make up                                # 共享基礎設施(NATS)+ 協調各 context 起自有 DB
-make test                              # 協調:逐 context 跑各自 workspace 的測試
-make -C projects/point-center internal-api   # 後台 API
-make -C projects/point-center storefront-api # 前台系統串接的 API
-make -C projects/point-center grant-worker   # 入帳 worker(多開終端 = 多實例)
-make -C projects/point-center expiry-job     # 到期清掃(單次執行)
-make -C projects/point-center test           # 只測這個 context 的 workspace
+make web-install   # 安裝前端相依(pnpm workspace)
+make up            # 起 storefront-center 的 Postgres + Valkey
+make run           # storefront-center,預設 0.0.0.0:3000
+make web-dev       # admin 編輯器(先 build blocks,再起 vite)
+make check         # cargo check
+make test          # cargo test(⚠️ 目前 0 個測試)
+make lint fmt      # clippy / rustfmt
+make psql          # 資料庫 shell
 ```
 
-root Makefile 只做共享基礎設施(NATS)與協調;context 專屬指令一律住在 `projects/<context>/Makefile`。容器引擎自動偵測(**podman 優先**,否則 docker),可覆寫:`make up COMPOSE="docker compose"`。
+**基礎設施一 context 一份 compose**,住在 `projects/<name>/docker-compose.yml`;root 沒有 compose —— 現在沒有任何跨 context 共用的東西。等第二個訂閱方 context 進場,跨 context 事件骨幹才會以共用 compose 回到 root(見 [backlog](docs/plan/backlog.md))。
 
-## Roadmap
+容器引擎自動偵測(**podman 優先**,否則 docker),可覆寫:`make up COMPOSE="docker compose"`。PG host port 預設 5433(避開開發機上常被佔用的 5432),可用 `SF_PG_PORT` 覆寫。
 
-- [x] 點數中心 v1 規格(docs/plan/01-point-center)
-- [x] 技術決策(docs/tech/01 選型、02 佈局、03 觀測)
-- [ ] v1 實作:components(ledger、issuance)/ apps ×4
-- [ ] 驗收:併發兌換不超扣、大批量單一任務、斷點續跑、來源防重複、多 worker、租戶隔離、本機 Grafana 觀測
-- [ ] 發送排程器(monorepo 內獨立 context,另立計畫文件)
+## 下一步
+
+1. M2 code review
+2. admin 的 `api/mock.ts` → 打真後端(前後端打通)
+3. 接 sqlx adapter,把 migration 交給它管(PG 已就位:`make up`)
+4. M3 Rust 端渲染 + M4 渲染引擎
