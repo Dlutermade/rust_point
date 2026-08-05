@@ -9,131 +9,131 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ShellRouteRouteImport } from './routes/_shell/route'
-import { Route as ShellIndexRouteImport } from './routes/_shell/index'
-import { Route as ShellHelpsIndexRouteImport } from './routes/_shell/helps/index'
-import { Route as ShellHelpsPageEditorRouteImport } from './routes/_shell/helps/page-editor'
-import { Route as ShellPagesFooterIndexRouteImport } from './routes/_shell/pages/footer/index'
-import { Route as ShellPagesFooterTemplateIdRouteImport } from './routes/_shell/pages/footer/$templateId'
-import { Route as ShellPagesFooterNewRouteImport } from './routes/_shell/pages/footer/new'
-import { Route as ShellPagesHeaderIndexRouteImport } from './routes/_shell/pages/header/index'
-import { Route as ShellPagesHeaderTemplateIdRouteImport } from './routes/_shell/pages/header/$templateId'
-import { Route as ShellPagesHeaderNewRouteImport } from './routes/_shell/pages/header/new'
-import { Route as ShellPagesHomeIndexRouteImport } from './routes/_shell/pages/home/index'
-import { Route as ShellPagesHomeTemplateIdRouteImport } from './routes/_shell/pages/home/$templateId'
-import { Route as ShellPagesHomeNewRouteImport } from './routes/_shell/pages/home/new'
+import { Route as LayoutRouteRouteImport } from './routes/_layout/route'
+import { Route as LayoutIndexRouteImport } from './routes/_layout/index'
+import { Route as LayoutHelpsIndexRouteImport } from './routes/_layout/helps/index'
+import { Route as LayoutHelpsPageEditorRouteImport } from './routes/_layout/helps/page-editor'
+import { Route as LayoutPagesFooterIndexRouteImport } from './routes/_layout/pages/footer/index'
+import { Route as LayoutPagesFooterTemplateIdRouteImport } from './routes/_layout/pages/footer/$templateId'
+import { Route as LayoutPagesFooterNewRouteImport } from './routes/_layout/pages/footer/new'
+import { Route as LayoutPagesHeaderIndexRouteImport } from './routes/_layout/pages/header/index'
+import { Route as LayoutPagesHeaderTemplateIdRouteImport } from './routes/_layout/pages/header/$templateId'
+import { Route as LayoutPagesHeaderNewRouteImport } from './routes/_layout/pages/header/new'
+import { Route as LayoutPagesHomeIndexRouteImport } from './routes/_layout/pages/home/index'
+import { Route as LayoutPagesHomeTemplateIdRouteImport } from './routes/_layout/pages/home/$templateId'
+import { Route as LayoutPagesHomeNewRouteImport } from './routes/_layout/pages/home/new'
 
-const ShellRouteRoute = ShellRouteRouteImport.update({
-  id: '/_shell',
+const LayoutRouteRoute = LayoutRouteRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShellIndexRoute = ShellIndexRouteImport.update({
+const LayoutIndexRoute = LayoutIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellHelpsIndexRoute = ShellHelpsIndexRouteImport.update({
+const LayoutHelpsIndexRoute = LayoutHelpsIndexRouteImport.update({
   id: '/helps/',
   path: '/helps/',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellHelpsPageEditorRoute = ShellHelpsPageEditorRouteImport.update({
+const LayoutHelpsPageEditorRoute = LayoutHelpsPageEditorRouteImport.update({
   id: '/helps/page-editor',
   path: '/helps/page-editor',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellPagesFooterIndexRoute = ShellPagesFooterIndexRouteImport.update({
+const LayoutPagesFooterIndexRoute = LayoutPagesFooterIndexRouteImport.update({
   id: '/pages/footer/',
   path: '/pages/footer/',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellPagesFooterTemplateIdRoute =
-  ShellPagesFooterTemplateIdRouteImport.update({
+const LayoutPagesFooterTemplateIdRoute =
+  LayoutPagesFooterTemplateIdRouteImport.update({
     id: '/pages/footer/$templateId',
     path: '/pages/footer/$templateId',
-    getParentRoute: () => ShellRouteRoute,
+    getParentRoute: () => LayoutRouteRoute,
   } as any)
-const ShellPagesFooterNewRoute = ShellPagesFooterNewRouteImport.update({
+const LayoutPagesFooterNewRoute = LayoutPagesFooterNewRouteImport.update({
   id: '/pages/footer/new',
   path: '/pages/footer/new',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellPagesHeaderIndexRoute = ShellPagesHeaderIndexRouteImport.update({
+const LayoutPagesHeaderIndexRoute = LayoutPagesHeaderIndexRouteImport.update({
   id: '/pages/header/',
   path: '/pages/header/',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellPagesHeaderTemplateIdRoute =
-  ShellPagesHeaderTemplateIdRouteImport.update({
+const LayoutPagesHeaderTemplateIdRoute =
+  LayoutPagesHeaderTemplateIdRouteImport.update({
     id: '/pages/header/$templateId',
     path: '/pages/header/$templateId',
-    getParentRoute: () => ShellRouteRoute,
+    getParentRoute: () => LayoutRouteRoute,
   } as any)
-const ShellPagesHeaderNewRoute = ShellPagesHeaderNewRouteImport.update({
+const LayoutPagesHeaderNewRoute = LayoutPagesHeaderNewRouteImport.update({
   id: '/pages/header/new',
   path: '/pages/header/new',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellPagesHomeIndexRoute = ShellPagesHomeIndexRouteImport.update({
+const LayoutPagesHomeIndexRoute = LayoutPagesHomeIndexRouteImport.update({
   id: '/pages/home/',
   path: '/pages/home/',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
-const ShellPagesHomeTemplateIdRoute =
-  ShellPagesHomeTemplateIdRouteImport.update({
+const LayoutPagesHomeTemplateIdRoute =
+  LayoutPagesHomeTemplateIdRouteImport.update({
     id: '/pages/home/$templateId',
     path: '/pages/home/$templateId',
-    getParentRoute: () => ShellRouteRoute,
+    getParentRoute: () => LayoutRouteRoute,
   } as any)
-const ShellPagesHomeNewRoute = ShellPagesHomeNewRouteImport.update({
+const LayoutPagesHomeNewRoute = LayoutPagesHomeNewRouteImport.update({
   id: '/pages/home/new',
   path: '/pages/home/new',
-  getParentRoute: () => ShellRouteRoute,
+  getParentRoute: () => LayoutRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof ShellIndexRoute
-  '/helps/page-editor': typeof ShellHelpsPageEditorRoute
-  '/helps/': typeof ShellHelpsIndexRoute
-  '/pages/footer/$templateId': typeof ShellPagesFooterTemplateIdRoute
-  '/pages/footer/new': typeof ShellPagesFooterNewRoute
-  '/pages/header/$templateId': typeof ShellPagesHeaderTemplateIdRoute
-  '/pages/header/new': typeof ShellPagesHeaderNewRoute
-  '/pages/home/$templateId': typeof ShellPagesHomeTemplateIdRoute
-  '/pages/home/new': typeof ShellPagesHomeNewRoute
-  '/pages/footer/': typeof ShellPagesFooterIndexRoute
-  '/pages/header/': typeof ShellPagesHeaderIndexRoute
-  '/pages/home/': typeof ShellPagesHomeIndexRoute
+  '/': typeof LayoutIndexRoute
+  '/helps/page-editor': typeof LayoutHelpsPageEditorRoute
+  '/helps/': typeof LayoutHelpsIndexRoute
+  '/pages/footer/$templateId': typeof LayoutPagesFooterTemplateIdRoute
+  '/pages/footer/new': typeof LayoutPagesFooterNewRoute
+  '/pages/header/$templateId': typeof LayoutPagesHeaderTemplateIdRoute
+  '/pages/header/new': typeof LayoutPagesHeaderNewRoute
+  '/pages/home/$templateId': typeof LayoutPagesHomeTemplateIdRoute
+  '/pages/home/new': typeof LayoutPagesHomeNewRoute
+  '/pages/footer/': typeof LayoutPagesFooterIndexRoute
+  '/pages/header/': typeof LayoutPagesHeaderIndexRoute
+  '/pages/home/': typeof LayoutPagesHomeIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof ShellIndexRoute
-  '/helps/page-editor': typeof ShellHelpsPageEditorRoute
-  '/helps': typeof ShellHelpsIndexRoute
-  '/pages/footer/$templateId': typeof ShellPagesFooterTemplateIdRoute
-  '/pages/footer/new': typeof ShellPagesFooterNewRoute
-  '/pages/header/$templateId': typeof ShellPagesHeaderTemplateIdRoute
-  '/pages/header/new': typeof ShellPagesHeaderNewRoute
-  '/pages/home/$templateId': typeof ShellPagesHomeTemplateIdRoute
-  '/pages/home/new': typeof ShellPagesHomeNewRoute
-  '/pages/footer': typeof ShellPagesFooterIndexRoute
-  '/pages/header': typeof ShellPagesHeaderIndexRoute
-  '/pages/home': typeof ShellPagesHomeIndexRoute
+  '/': typeof LayoutIndexRoute
+  '/helps/page-editor': typeof LayoutHelpsPageEditorRoute
+  '/helps': typeof LayoutHelpsIndexRoute
+  '/pages/footer/$templateId': typeof LayoutPagesFooterTemplateIdRoute
+  '/pages/footer/new': typeof LayoutPagesFooterNewRoute
+  '/pages/header/$templateId': typeof LayoutPagesHeaderTemplateIdRoute
+  '/pages/header/new': typeof LayoutPagesHeaderNewRoute
+  '/pages/home/$templateId': typeof LayoutPagesHomeTemplateIdRoute
+  '/pages/home/new': typeof LayoutPagesHomeNewRoute
+  '/pages/footer': typeof LayoutPagesFooterIndexRoute
+  '/pages/header': typeof LayoutPagesHeaderIndexRoute
+  '/pages/home': typeof LayoutPagesHomeIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/_shell': typeof ShellRouteRouteWithChildren
-  '/_shell/': typeof ShellIndexRoute
-  '/_shell/helps/page-editor': typeof ShellHelpsPageEditorRoute
-  '/_shell/helps/': typeof ShellHelpsIndexRoute
-  '/_shell/pages/footer/$templateId': typeof ShellPagesFooterTemplateIdRoute
-  '/_shell/pages/footer/new': typeof ShellPagesFooterNewRoute
-  '/_shell/pages/header/$templateId': typeof ShellPagesHeaderTemplateIdRoute
-  '/_shell/pages/header/new': typeof ShellPagesHeaderNewRoute
-  '/_shell/pages/home/$templateId': typeof ShellPagesHomeTemplateIdRoute
-  '/_shell/pages/home/new': typeof ShellPagesHomeNewRoute
-  '/_shell/pages/footer/': typeof ShellPagesFooterIndexRoute
-  '/_shell/pages/header/': typeof ShellPagesHeaderIndexRoute
-  '/_shell/pages/home/': typeof ShellPagesHomeIndexRoute
+  '/_layout': typeof LayoutRouteRouteWithChildren
+  '/_layout/': typeof LayoutIndexRoute
+  '/_layout/helps/page-editor': typeof LayoutHelpsPageEditorRoute
+  '/_layout/helps/': typeof LayoutHelpsIndexRoute
+  '/_layout/pages/footer/$templateId': typeof LayoutPagesFooterTemplateIdRoute
+  '/_layout/pages/footer/new': typeof LayoutPagesFooterNewRoute
+  '/_layout/pages/header/$templateId': typeof LayoutPagesHeaderTemplateIdRoute
+  '/_layout/pages/header/new': typeof LayoutPagesHeaderNewRoute
+  '/_layout/pages/home/$templateId': typeof LayoutPagesHomeTemplateIdRoute
+  '/_layout/pages/home/new': typeof LayoutPagesHomeNewRoute
+  '/_layout/pages/footer/': typeof LayoutPagesFooterIndexRoute
+  '/_layout/pages/header/': typeof LayoutPagesHeaderIndexRoute
+  '/_layout/pages/home/': typeof LayoutPagesHomeIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,157 +166,157 @@ export interface FileRouteTypes {
     | '/pages/home'
   id:
     | '__root__'
-    | '/_shell'
-    | '/_shell/'
-    | '/_shell/helps/page-editor'
-    | '/_shell/helps/'
-    | '/_shell/pages/footer/$templateId'
-    | '/_shell/pages/footer/new'
-    | '/_shell/pages/header/$templateId'
-    | '/_shell/pages/header/new'
-    | '/_shell/pages/home/$templateId'
-    | '/_shell/pages/home/new'
-    | '/_shell/pages/footer/'
-    | '/_shell/pages/header/'
-    | '/_shell/pages/home/'
+    | '/_layout'
+    | '/_layout/'
+    | '/_layout/helps/page-editor'
+    | '/_layout/helps/'
+    | '/_layout/pages/footer/$templateId'
+    | '/_layout/pages/footer/new'
+    | '/_layout/pages/header/$templateId'
+    | '/_layout/pages/header/new'
+    | '/_layout/pages/home/$templateId'
+    | '/_layout/pages/home/new'
+    | '/_layout/pages/footer/'
+    | '/_layout/pages/header/'
+    | '/_layout/pages/home/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  ShellRouteRoute: typeof ShellRouteRouteWithChildren
+  LayoutRouteRoute: typeof LayoutRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_shell': {
-      id: '/_shell'
+    '/_layout': {
+      id: '/_layout'
       path: ''
       fullPath: '/'
-      preLoaderRoute: typeof ShellRouteRouteImport
+      preLoaderRoute: typeof LayoutRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_shell/': {
-      id: '/_shell/'
+    '/_layout/': {
+      id: '/_layout/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof ShellIndexRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutIndexRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/helps/': {
-      id: '/_shell/helps/'
+    '/_layout/helps/': {
+      id: '/_layout/helps/'
       path: '/helps'
       fullPath: '/helps/'
-      preLoaderRoute: typeof ShellHelpsIndexRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutHelpsIndexRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/helps/page-editor': {
-      id: '/_shell/helps/page-editor'
+    '/_layout/helps/page-editor': {
+      id: '/_layout/helps/page-editor'
       path: '/helps/page-editor'
       fullPath: '/helps/page-editor'
-      preLoaderRoute: typeof ShellHelpsPageEditorRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutHelpsPageEditorRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/footer/': {
-      id: '/_shell/pages/footer/'
+    '/_layout/pages/footer/': {
+      id: '/_layout/pages/footer/'
       path: '/pages/footer'
       fullPath: '/pages/footer/'
-      preLoaderRoute: typeof ShellPagesFooterIndexRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesFooterIndexRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/footer/$templateId': {
-      id: '/_shell/pages/footer/$templateId'
+    '/_layout/pages/footer/$templateId': {
+      id: '/_layout/pages/footer/$templateId'
       path: '/pages/footer/$templateId'
       fullPath: '/pages/footer/$templateId'
-      preLoaderRoute: typeof ShellPagesFooterTemplateIdRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesFooterTemplateIdRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/footer/new': {
-      id: '/_shell/pages/footer/new'
+    '/_layout/pages/footer/new': {
+      id: '/_layout/pages/footer/new'
       path: '/pages/footer/new'
       fullPath: '/pages/footer/new'
-      preLoaderRoute: typeof ShellPagesFooterNewRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesFooterNewRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/header/': {
-      id: '/_shell/pages/header/'
+    '/_layout/pages/header/': {
+      id: '/_layout/pages/header/'
       path: '/pages/header'
       fullPath: '/pages/header/'
-      preLoaderRoute: typeof ShellPagesHeaderIndexRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesHeaderIndexRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/header/$templateId': {
-      id: '/_shell/pages/header/$templateId'
+    '/_layout/pages/header/$templateId': {
+      id: '/_layout/pages/header/$templateId'
       path: '/pages/header/$templateId'
       fullPath: '/pages/header/$templateId'
-      preLoaderRoute: typeof ShellPagesHeaderTemplateIdRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesHeaderTemplateIdRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/header/new': {
-      id: '/_shell/pages/header/new'
+    '/_layout/pages/header/new': {
+      id: '/_layout/pages/header/new'
       path: '/pages/header/new'
       fullPath: '/pages/header/new'
-      preLoaderRoute: typeof ShellPagesHeaderNewRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesHeaderNewRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/home/': {
-      id: '/_shell/pages/home/'
+    '/_layout/pages/home/': {
+      id: '/_layout/pages/home/'
       path: '/pages/home'
       fullPath: '/pages/home/'
-      preLoaderRoute: typeof ShellPagesHomeIndexRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesHomeIndexRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/home/$templateId': {
-      id: '/_shell/pages/home/$templateId'
+    '/_layout/pages/home/$templateId': {
+      id: '/_layout/pages/home/$templateId'
       path: '/pages/home/$templateId'
       fullPath: '/pages/home/$templateId'
-      preLoaderRoute: typeof ShellPagesHomeTemplateIdRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesHomeTemplateIdRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
-    '/_shell/pages/home/new': {
-      id: '/_shell/pages/home/new'
+    '/_layout/pages/home/new': {
+      id: '/_layout/pages/home/new'
       path: '/pages/home/new'
       fullPath: '/pages/home/new'
-      preLoaderRoute: typeof ShellPagesHomeNewRouteImport
-      parentRoute: typeof ShellRouteRoute
+      preLoaderRoute: typeof LayoutPagesHomeNewRouteImport
+      parentRoute: typeof LayoutRouteRoute
     }
   }
 }
 
-interface ShellRouteRouteChildren {
-  ShellIndexRoute: typeof ShellIndexRoute
-  ShellHelpsPageEditorRoute: typeof ShellHelpsPageEditorRoute
-  ShellHelpsIndexRoute: typeof ShellHelpsIndexRoute
-  ShellPagesFooterTemplateIdRoute: typeof ShellPagesFooterTemplateIdRoute
-  ShellPagesFooterNewRoute: typeof ShellPagesFooterNewRoute
-  ShellPagesHeaderTemplateIdRoute: typeof ShellPagesHeaderTemplateIdRoute
-  ShellPagesHeaderNewRoute: typeof ShellPagesHeaderNewRoute
-  ShellPagesHomeTemplateIdRoute: typeof ShellPagesHomeTemplateIdRoute
-  ShellPagesHomeNewRoute: typeof ShellPagesHomeNewRoute
-  ShellPagesFooterIndexRoute: typeof ShellPagesFooterIndexRoute
-  ShellPagesHeaderIndexRoute: typeof ShellPagesHeaderIndexRoute
-  ShellPagesHomeIndexRoute: typeof ShellPagesHomeIndexRoute
+interface LayoutRouteRouteChildren {
+  LayoutIndexRoute: typeof LayoutIndexRoute
+  LayoutHelpsPageEditorRoute: typeof LayoutHelpsPageEditorRoute
+  LayoutHelpsIndexRoute: typeof LayoutHelpsIndexRoute
+  LayoutPagesFooterTemplateIdRoute: typeof LayoutPagesFooterTemplateIdRoute
+  LayoutPagesFooterNewRoute: typeof LayoutPagesFooterNewRoute
+  LayoutPagesHeaderTemplateIdRoute: typeof LayoutPagesHeaderTemplateIdRoute
+  LayoutPagesHeaderNewRoute: typeof LayoutPagesHeaderNewRoute
+  LayoutPagesHomeTemplateIdRoute: typeof LayoutPagesHomeTemplateIdRoute
+  LayoutPagesHomeNewRoute: typeof LayoutPagesHomeNewRoute
+  LayoutPagesFooterIndexRoute: typeof LayoutPagesFooterIndexRoute
+  LayoutPagesHeaderIndexRoute: typeof LayoutPagesHeaderIndexRoute
+  LayoutPagesHomeIndexRoute: typeof LayoutPagesHomeIndexRoute
 }
 
-const ShellRouteRouteChildren: ShellRouteRouteChildren = {
-  ShellIndexRoute: ShellIndexRoute,
-  ShellHelpsPageEditorRoute: ShellHelpsPageEditorRoute,
-  ShellHelpsIndexRoute: ShellHelpsIndexRoute,
-  ShellPagesFooterTemplateIdRoute: ShellPagesFooterTemplateIdRoute,
-  ShellPagesFooterNewRoute: ShellPagesFooterNewRoute,
-  ShellPagesHeaderTemplateIdRoute: ShellPagesHeaderTemplateIdRoute,
-  ShellPagesHeaderNewRoute: ShellPagesHeaderNewRoute,
-  ShellPagesHomeTemplateIdRoute: ShellPagesHomeTemplateIdRoute,
-  ShellPagesHomeNewRoute: ShellPagesHomeNewRoute,
-  ShellPagesFooterIndexRoute: ShellPagesFooterIndexRoute,
-  ShellPagesHeaderIndexRoute: ShellPagesHeaderIndexRoute,
-  ShellPagesHomeIndexRoute: ShellPagesHomeIndexRoute,
+const LayoutRouteRouteChildren: LayoutRouteRouteChildren = {
+  LayoutIndexRoute: LayoutIndexRoute,
+  LayoutHelpsPageEditorRoute: LayoutHelpsPageEditorRoute,
+  LayoutHelpsIndexRoute: LayoutHelpsIndexRoute,
+  LayoutPagesFooterTemplateIdRoute: LayoutPagesFooterTemplateIdRoute,
+  LayoutPagesFooterNewRoute: LayoutPagesFooterNewRoute,
+  LayoutPagesHeaderTemplateIdRoute: LayoutPagesHeaderTemplateIdRoute,
+  LayoutPagesHeaderNewRoute: LayoutPagesHeaderNewRoute,
+  LayoutPagesHomeTemplateIdRoute: LayoutPagesHomeTemplateIdRoute,
+  LayoutPagesHomeNewRoute: LayoutPagesHomeNewRoute,
+  LayoutPagesFooterIndexRoute: LayoutPagesFooterIndexRoute,
+  LayoutPagesHeaderIndexRoute: LayoutPagesHeaderIndexRoute,
+  LayoutPagesHomeIndexRoute: LayoutPagesHomeIndexRoute,
 }
 
-const ShellRouteRouteWithChildren = ShellRouteRoute._addFileChildren(
-  ShellRouteRouteChildren,
+const LayoutRouteRouteWithChildren = LayoutRouteRoute._addFileChildren(
+  LayoutRouteRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  ShellRouteRoute: ShellRouteRouteWithChildren,
+  LayoutRouteRoute: LayoutRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,0 +1,104 @@
+import { App, Button, Form, Spin } from 'antd'
+import { CopyOutlined, SaveOutlined } from '@ant-design/icons'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { headerApi } from '../../../../api/header'
+import { PageFormShell } from '../../../../components/page-template/PageFormShell'
+import type { PageFormValues } from '../../../../components/page-template/PageFormShell'
+import { StatusTag } from '../../../../components/page-template/StatusTag'
+import { buildPublishConfirm } from '../../../../components/page-template/publishConfirm'
+
+// /pages/header/$templateId — 編輯(草稿)或檢視(已發布,唯讀)某個頁首,一律走表單。
+export const Route = createFileRoute('/_layout/pages/header/$templateId')({
+  component: HeaderEditorPage,
+})
+
+function HeaderEditorPage() {
+  const { templateId } = Route.useParams()
+  const navigate = useNavigate()
+  const { message, modal } = App.useApp()
+  const qc = useQueryClient()
+  const [form] = Form.useForm<PageFormValues>()
+
+  const entity = useQuery({
+    queryKey: ['header', 'entity', templateId],
+    queryFn: () => headerApi.get(templateId),
+  })
+  const readOnly = entity.data ? entity.data.status !== 'draft' : false
+
+  const saveDraft = useMutation({
+    mutationFn: (values: PageFormValues) =>
+      headerApi.saveDraft(templateId, { content: values.content, name: values.name.trim() }),
+    onSuccess: () => {
+      message.success('已儲存草稿')
+      qc.invalidateQueries({ queryKey: ['header'] })
+    },
+  })
+  const publish = useMutation({
+    mutationFn: async (values: PageFormValues) => {
+      await headerApi.saveDraft(templateId, { content: values.content, name: values.name.trim() })
+      await headerApi.publish(templateId, {})
+    },
+    onSuccess: () => {
+      message.success('已發布')
+      qc.invalidateQueries({ queryKey: ['header'] })
+      navigate({ to: '/pages/header' })
+    },
+  })
+  const runDraft = () => form.validateFields().then((v) => saveDraft.mutate(v))
+  const runPublish = () =>
+    form.validateFields().then((v) => {
+      modal.confirm(
+        buildPublishConfirm({ name: v.name, kind: 'chrome' }, () => publish.mutateAsync(v)),
+      )
+    })
+
+  if (entity.isLoading) {
+    return (
+      <div className="p-16 text-center">
+        <Spin />
+      </div>
+    )
+  }
+
+  return (
+    <PageFormShell
+      heading={entity.data?.name ?? '頁首'}
+      statusTag={entity.data ? <StatusTag v={entity.data} /> : undefined}
+      form={form}
+      initialValues={{ name: entity.data?.name ?? '', content: entity.data?.content ?? [] }}
+      readOnly={readOnly}
+      editorTitle={entity.data?.name ?? '頁首'}
+      previewId={templateId}
+      frame="header"
+      onBackToList={() => navigate({ to: '/pages/header' })}
+      footerActions={
+        readOnly
+          ? [
+              <Button
+                key="dup"
+                type="primary"
+                icon={<CopyOutlined />}
+                onClick={() => navigate({ to: '/pages/header/new', search: { from: templateId } })}
+              >
+                複製一份來編輯
+              </Button>,
+            ]
+          : [
+              <Button key="draft" loading={saveDraft.isPending} onClick={runDraft}>
+                儲存草稿
+              </Button>,
+              <Button
+                key="pub"
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={publish.isPending}
+                onClick={runPublish}
+              >
+                發布
+              </Button>,
+            ]
+      }
+    />
+  )
+}

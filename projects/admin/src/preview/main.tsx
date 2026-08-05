@@ -5,7 +5,10 @@ import type { SfEvent } from '@sc/blocks'
 import type { BlockInstance } from '../api/types'
 import { getActiveLayoutContent, getTemplate, getTemplateDraft } from '../api/mock'
 import { readPreviewScratch } from './scratch'
-import { BlockView } from '../page-block-editor/BlockView'
+import { logger } from '../shared/logger'
+import { BlockView } from '../components/block-editor/BlockView'
+
+const log = logger('preview')
 
 // 獨立打包端點(preview.html):模擬前台,刻意不掛 admin 的 router / antd / react-query,
 // 避免兩個 SPA 互相汙染(共用 provider / 全域監聽 / 路由狀態)。模板 id 由 query 帶:?template=xxx。
@@ -45,7 +48,7 @@ function Preview() {
     const uninstall = installEventRouter(document, {
       execute: (e: SfEvent) => {
         if (e.name === 'view_promotion' || e.name === 'block_hover') return
-        console.info(`(模擬前台)${e.name}`, e.params ?? {})
+        log.info(`(模擬前台)${e.name}`, e.params ?? {})
       },
       sinks: [consoleSink],
     })
