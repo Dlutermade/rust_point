@@ -4,11 +4,11 @@
 //! 多租戶解析仍是 stub,暫時全掛在 `DEFAULT_TENANT` 底下。
 
 use axum::Json;
+use axum::Router;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, patch, post, put};
-use axum::Router;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use time::OffsetDateTime;
@@ -78,7 +78,10 @@ struct TemplateEntity {
 
 impl From<&Template> for TemplateEntity {
     fn from(t: &Template) -> Self {
-        Self { summary: t.into(), content: t.content.clone() }
+        Self {
+            summary: t.into(),
+            content: t.content.clone(),
+        }
     }
 }
 
@@ -148,7 +151,10 @@ async fn create(
     Json(body): Json<CreateBody>,
 ) -> Result<(StatusCode, Json<TemplateSummary>), ApiError> {
     let slot = parse_slot(&slot)?;
-    let t = app.store.create_draft(DEFAULT_TENANT, slot, body.name).await?;
+    let t = app
+        .store
+        .create_draft(DEFAULT_TENANT, slot, body.name)
+        .await?;
     Ok((StatusCode::CREATED, Json((&t).into())))
 }
 
@@ -180,7 +186,10 @@ async fn publish(
     Path(id): Path<Uuid>,
     Json(body): Json<PublishBody>,
 ) -> Result<Json<TemplateSummary>, ApiError> {
-    let patch = PublishPatch { content: body.content, targeting: body.targeting };
+    let patch = PublishPatch {
+        content: body.content,
+        targeting: body.targeting,
+    };
     let t = app.store.publish(DEFAULT_TENANT, id, patch).await?;
     Ok(Json((&t).into()))
 }
@@ -206,7 +215,10 @@ async fn set_priority(
     Path(id): Path<Uuid>,
     Json(body): Json<PriorityBody>,
 ) -> Result<Json<TemplateSummary>, ApiError> {
-    let t = app.store.set_priority(DEFAULT_TENANT, id, body.priority).await?;
+    let t = app
+        .store
+        .set_priority(DEFAULT_TENANT, id, body.priority)
+        .await?;
     Ok(Json((&t).into()))
 }
 
@@ -260,7 +272,8 @@ fn parse_slot(s: &str) -> Result<Slot, ApiError> {
 }
 
 fn rfc3339(t: OffsetDateTime) -> String {
-    t.format(&time::format_description::well_known::Rfc3339).unwrap_or_default()
+    t.format(&time::format_description::well_known::Rfc3339)
+        .unwrap_or_default()
 }
 
 /// 把 StoreError 對到 HTTP 狀態碼 + JSON 錯誤體。

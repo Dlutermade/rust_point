@@ -15,7 +15,10 @@ pub fn router() -> Router<AppState> {
 }
 
 async fn index(headers: HeaderMap) -> Html<String> {
-    let host = headers.get(HOST).and_then(|v| v.to_str().ok()).unwrap_or("");
+    let host = headers
+        .get(HOST)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
     let tenant = tenant::resolve_from_host(host);
     Html(format!(
         "<!doctype html><meta charset=\"utf-8\"><title>storefront-center</title>\

@@ -2,6 +2,7 @@
 //! 已發布凍結、常態版不可暫停 / 刪除、每版位至多一個站台預設。
 //! 之後換 Postgres adapter 時,這些規則搬到 SQL / 交易裡,API 層不動。
 
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -100,12 +101,16 @@ impl InMemoryStore {
         ));
 
         Self {
-            inner: RwLock::new(Data { templates, audit: Vec::new() }),
+            inner: RwLock::new(Data {
+                templates,
+                audit: Vec::new(),
+            }),
         }
     }
 }
 
-/// 建一個種子模板。
+/// 建一個種子模板。欄位平鋪比包一層 struct 直白;PG adapter 進場後整塊會消失。
+#[allow(clippy::too_many_arguments)]
 fn seed(
     tenant_id: Uuid,
     slot: Slot,
@@ -346,23 +351,35 @@ impl Store for InMemoryStore {
     async fn audit(&self, tenant: Uuid, id: Uuid) -> StoreResult<Vec<AuditEntry>> {
         let data = self.inner.read().unwrap();
         // 確認模板存在且屬於此租戶(已刪除的就查不到)。
-        if !data.templates.get(&id).is_some_and(|t| t.tenant_id == tenant) {
+        if !data
+            .templates
+            .get(&id)
+            .is_some_and(|t| t.tenant_id == tenant)
+        {
             return Err(StoreError::NotFound);
         }
-        let mut out: Vec<AuditEntry> =
-            data.audit.iter().filter(|a| a.template_id == id).cloned().collect();
-        out.sort_by(|a, b| b.at.cmp(&a.at));
+        let mut out: Vec<AuditEntry> = data
+            .audit
+            .iter()
+            .filter(|a| a.template_id == id)
+            .cloned()
+            .collect();
+        out.sort_by_key(|a| Reverse(a.at));
         Ok(out)
     }
 
     async fn active_content(&self, tenant: Uuid, slot: Slot) -> StoreResult<Value> {
         let data = self.inner.read().unwrap();
         let actives = || {
-            data.templates
-                .values()
-                .filter(|t| t.tenant_id == tenant && t.slot == slot && t.status == TemplateStatus::Active)
+            data.templates.values().filter(|t| {
+                t.tenant_id == tenant && t.slot == slot && t.status == TemplateStatus::Active
+            })
         };
-        let winner = actives().find(|t| t.is_default).or_else(|| actives().next());
-        Ok(winner.map(|t| t.content.clone()).unwrap_or_else(|| json!([])))
+        let winner = actives()
+            .find(|t| t.is_default)
+            .or_else(|| actives().next());
+        Ok(winner
+            .map(|t| t.content.clone())
+            .unwrap_or_else(|| json!([])))
     }
 }
