@@ -29,6 +29,19 @@ import {
 
 const { Sider, Header, Content } = Layout
 
+type BlockTreeEditorProps = {
+  title: string
+  initialBlocks: BlockInstance[]
+  readOnly?: boolean
+  contextHeader?: BlockInstance[]
+  contextFooter?: BlockInstance[]
+  /** 正在編的是頁面 / 頁首 / 頁尾 —— 讓畫布畫出「假頁面 body」示意外框的位置。 */
+  frame?: 'page' | 'header' | 'footer'
+  onBack: () => void
+  /** 動作區插槽:編輯器給當前 blocks,消費者回傳要放的按鈕(存草稿/發布/預覽/唯讀標籤…)。 */
+  submitterRender?: (blocks: BlockInstance[]) => ReactNode
+}
+
 // 純受控編輯器:只認 blocks(value)+ 一個動作區插槽 submitterRender(控制反轉)。
 // 它不知道「儲存 / 草稿 / 發布 / 預覽」是什麼——那些全由消費者在 submitterRender 裡自行渲染。
 // 不抓資料、不知道 react-query、不知道自己在編哪個模板/版位——資料組裝是叫用它的人的事。
@@ -41,18 +54,7 @@ export function BlockTreeEditor({
   frame = 'page',
   onBack,
   submitterRender,
-}: {
-  title: string
-  initialBlocks: BlockInstance[]
-  readOnly?: boolean
-  contextHeader?: BlockInstance[]
-  contextFooter?: BlockInstance[]
-  /** 正在編的是頁面 / 頁首 / 頁尾 —— 讓畫布畫出「假頁面 body」示意外框的位置。 */
-  frame?: 'page' | 'header' | 'footer'
-  onBack: () => void
-  /** 動作區插槽:編輯器給當前 blocks,消費者回傳要放的按鈕(存草稿/發布/預覽/唯讀標籤…)。 */
-  submitterRender?: (blocks: BlockInstance[]) => ReactNode
-}) {
+}: BlockTreeEditorProps) {
   const [blocks, setBlocks] = useState<BlockInstance[]>(initialBlocks)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
@@ -114,11 +116,11 @@ export function BlockTreeEditor({
         type,
         data: { ...bt.defaults },
       }
-      const p = parentId ? findNode(b, parentId) : null
-      const target = p && blockTypeMap[p.type]?.container ? parentId : null
+      const parent = parentId ? findNode(b, parentId) : null
+      const containerId = parent && blockTypeMap[parent.type]?.container ? parentId : null
       // 圖片丟進疊層 → 預設鋪滿當背景(不設就以自然尺寸溢出,還得手動去設 Fill)。
-      if (type === 'image' && p?.type === 'stack') inst.size = { w: 'fill', h: 'fill' }
-      commit(target ? insertChild(b, target, inst) : [...b, inst])
+      if (type === 'image' && parent?.type === 'stack') inst.size = { w: 'fill', h: 'fill' }
+      commit(containerId ? insertChild(b, containerId, inst) : [...b, inst])
       setSelectedId(inst.id)
     },
     [commit],
@@ -203,8 +205,12 @@ export function BlockTreeEditor({
   // 鍵盤:Undo/Redo、Delete、Ctrl+D 複製、Ctrl+C/V、Esc。
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      const target = e.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      )
+        return
       const mod = e.ctrlKey || e.metaKey
       const sel = stateRef.current.selectedId
 

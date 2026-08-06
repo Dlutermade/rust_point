@@ -31,6 +31,15 @@ interface ActionValue {
   newTab?: boolean
 }
 
+type SettingsPanelProps = {
+  instance: BlockInstance | null
+  onChange: (data: Record<string, unknown>) => void
+  onSize: (size: BlockSize) => void
+  onPos: (pos: Pos9) => void
+  parentIsStack: boolean
+  readOnly?: boolean
+}
+
 export function SettingsPanel({
   instance,
   onChange,
@@ -38,14 +47,7 @@ export function SettingsPanel({
   onPos,
   parentIsStack,
   readOnly,
-}: {
-  instance: BlockInstance | null
-  onChange: (data: Record<string, unknown>) => void
-  onSize: (size: BlockSize) => void
-  onPos: (pos: Pos9) => void
-  parentIsStack: boolean
-  readOnly?: boolean
-}) {
+}: SettingsPanelProps) {
   if (!instance) {
     return (
       <div className="mt-10 text-center text-sm leading-[1.8] text-[#bbb]">
@@ -72,7 +74,7 @@ export function SettingsPanel({
         </div>
       )}
       {/* component={false}:只要 Form.Item 的垂直排版 + context,不渲染真的 <form>,
-          否則 SettingsPanel 在 PageFormShell 的 ProForm 裡會變成巢狀 form(HTML 不合法)。 */}
+          否則 SettingsPanel 在 PageTemplateForm 的 ProForm 裡會變成巢狀 form(HTML 不合法)。 */}
       <Form layout="vertical" component={false}>
         {bt.schema.fields
           .filter((f) => showField(f, instance.data))
@@ -166,23 +168,21 @@ function renderControl(field: BlockField, value: unknown, onChange: (v: unknown)
   }
 }
 
-// X/Y 兩軸間距,每軸一條 Slider(可拉)+ 數字框。可鎖定連動(X=Y)。
-function SpacingControl({
-  field,
-  value,
-  onChange,
-}: {
+type SpacingControlProps = {
   field: BlockField
   value: unknown
   onChange: (v: unknown) => void
-}) {
-  const v = toSpacing(value, 0)
-  const [locked, setLocked] = useState(v.x === v.y)
+}
+
+// X/Y 兩軸間距,每軸一條 Slider(可拉)+ 數字框。可鎖定連動(X=Y)。
+function SpacingControl({ field, value, onChange }: SpacingControlProps) {
+  const spacing = toSpacing(value, 0)
+  const [isLocked, setIsLocked] = useState(spacing.x === spacing.y)
   const min = field.min ?? 0
   const max = field.max ?? 120
   const step = field.step ?? 1
-  const setX = (x: number) => onChange(locked ? { x, y: x } : { x, y: v.y })
-  const setY = (y: number) => onChange(locked ? { x: y, y } : { x: v.x, y })
+  const setX = (x: number) => onChange(isLocked ? { x, y: x } : { x, y: spacing.y })
+  const setY = (y: number) => onChange(isLocked ? { x: y, y } : { x: spacing.x, y })
 
   const axis = (
     label: string,
@@ -212,18 +212,18 @@ function SpacingControl({
   const lockBtn = (
     <Button
       size="small"
-      type={locked ? 'primary' : 'text'}
+      type={isLocked ? 'primary' : 'text'}
       icon={<LinkOutlined />}
       title="鎖定 X=Y"
       className="flex-none"
-      onClick={() => setLocked((l) => !l)}
+      onClick={() => setIsLocked((l) => !l)}
     />
   )
 
   return (
     <div className="flex flex-col gap-2">
-      {axis('↔', '水平 X', v.x, setX, lockBtn)}
-      {axis('↕', '垂直 Y', v.y, setY, <span className="w-6 flex-none" />)}
+      {axis('↔', '水平 X', spacing.x, setX, lockBtn)}
+      {axis('↕', '垂直 Y', spacing.y, setY, <span className="w-6 flex-none" />)}
     </div>
   )
 }
@@ -240,7 +240,9 @@ const POS_CELLS: Pos9[] = [
   'bottom',
   'bottom-right',
 ]
-function AlignGrid({ value, onChange }: { value?: Pos9; onChange: (p: Pos9) => void }) {
+type AlignGridProps = { value?: Pos9; onChange: (p: Pos9) => void }
+
+function AlignGrid({ value, onChange }: AlignGridProps) {
   const cur = value ?? 'center'
   return (
     <div className="grid grid-cols-[repeat(3,22px)] gap-0.75">
@@ -259,8 +261,10 @@ function AlignGrid({ value, onChange }: { value?: Pos9; onChange: (p: Pos9) => v
   )
 }
 
+type SizeSectionProps = { size?: BlockSize; onSize: (s: BlockSize) => void }
+
 // Framer 式尺寸:寬/高各選 填滿 Fill / 貼齊 Hug / 固定 Fixed。
-function SizeSection({ size, onSize }: { size?: BlockSize; onSize: (s: BlockSize) => void }) {
+function SizeSection({ size, onSize }: SizeSectionProps) {
   const s = size ?? {}
   return (
     <div className="mb-4">
@@ -285,19 +289,15 @@ function SizeSection({ size, onSize }: { size?: BlockSize; onSize: (s: BlockSize
   )
 }
 
-function SizeAxis({
-  label,
-  mode,
-  px,
-  onMode,
-  onPx,
-}: {
+type SizeAxisProps = {
   label: string
   mode?: SizeMode
   px?: number
   onMode: (m: SizeMode) => void
   onPx: (n: number) => void
-}) {
+}
+
+function SizeAxis({ label, mode, px, onMode, onPx }: SizeAxisProps) {
   return (
     <div className="flex-1">
       <div className="field-label mb-1">{label}</div>
@@ -327,13 +327,12 @@ function SizeAxis({
   )
 }
 
-function ActionControl({
-  value,
-  onChange,
-}: {
+type ActionControlProps = {
   value: ActionValue | undefined
   onChange: (v: unknown) => void
-}) {
+}
+
+function ActionControl({ value, onChange }: ActionControlProps) {
   const kind = value?.kind ?? 'none'
   const href = value?.params?.href ?? ''
   return (

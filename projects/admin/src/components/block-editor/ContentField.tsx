@@ -6,6 +6,17 @@ import { BlockTreeEditor } from './BlockTreeEditor'
 import { BlockView } from './BlockView'
 import { writePreviewScratch } from '../../preview/scratch'
 
+type ContentFieldProps = {
+  value?: BlockInstance[]
+  onChange?: (blocks: BlockInstance[]) => void
+  readOnly?: boolean
+  editorTitle: string
+  previewId?: string
+  contextHeader?: BlockInstance[]
+  contextFooter?: BlockInstance[]
+  frame?: 'page' | 'header' | 'footer'
+}
+
 // 「頁面內容」表單欄位:內容只是表單的一個值。點「編輯頁面」叫出全螢幕編輯器,
 // 編輯器按「儲存並返回」把 blocks 交回(onChange),不碰 server —— 真正落地在表單的儲存草稿/發布。
 // 表單頁直接內嵌即時預覽(不用開分頁/進編輯器就看得到);點預覽即進編輯器,省下點擊。
@@ -18,17 +29,8 @@ export function ContentField({
   contextHeader,
   contextFooter,
   frame,
-}: {
-  value?: BlockInstance[]
-  onChange?: (blocks: BlockInstance[]) => void
-  readOnly?: boolean
-  editorTitle: string
-  previewId?: string
-  contextHeader?: BlockInstance[]
-  contextFooter?: BlockInstance[]
-  frame?: 'page' | 'header' | 'footer'
-}) {
-  const [open, setOpen] = useState(false)
+}: ContentFieldProps) {
+  const [isOpenedEditor, setIsOpenedEditor] = useState(false)
   const blocks = value ?? []
 
   // 預覽(全尺寸):把 blocks 丟進 client 暫存、開新分頁看——不碰 server。
@@ -49,7 +51,7 @@ export function ContentField({
           <Button icon={<EyeOutlined />} onClick={() => openPreview(blocks)} disabled={!count}>
             開新分頁預覽
           </Button>
-          <Button type="primary" icon={<EditOutlined />} onClick={() => setOpen(true)}>
+          <Button type="primary" icon={<EditOutlined />} onClick={() => setIsOpenedEditor(true)}>
             {readOnly ? '檢視頁面' : '編輯頁面'}
           </Button>
         </Space>
@@ -61,20 +63,20 @@ export function ContentField({
           contextHeader={contextHeader}
           contextFooter={contextFooter}
           frame={frame}
-          onOpen={() => setOpen(true)}
+          onOpen={() => setIsOpenedEditor(true)}
           readOnly={readOnly}
         />
       ) : (
         <button
           type="button"
-          onClick={() => setOpen(true)}
+          onClick={() => setIsOpenedEditor(true)}
           className="flex h-40 w-full cursor-pointer items-center justify-center rounded-lg border border-dashed border-[#d9d9d9] bg-[#fafafa] text-[#999]"
         >
           點此進入編排
         </button>
       )}
 
-      {open && (
+      {isOpenedEditor && (
         <BlockTreeEditor
           title={editorTitle}
           initialBlocks={blocks}
@@ -82,7 +84,7 @@ export function ContentField({
           contextHeader={contextHeader}
           contextFooter={contextFooter}
           frame={frame}
-          onBack={() => setOpen(false)}
+          onBack={() => setIsOpenedEditor(false)}
           submitterRender={(b) => (
             <>
               <Button icon={<EyeOutlined />} onClick={() => openPreview(b)}>
@@ -95,7 +97,7 @@ export function ContentField({
                   type="primary"
                   onClick={() => {
                     onChange?.(b)
-                    setOpen(false)
+                    setIsOpenedEditor(false)
                   }}
                 >
                   儲存並返回
@@ -112,6 +114,15 @@ export function ContentField({
 // 桌面寬:頁面以此寬度渲染真積木,再等比縮到欄位寬。
 const DESIGN_W = 1180
 
+type InlinePreviewProps = {
+  blocks: BlockInstance[]
+  contextHeader?: BlockInstance[]
+  contextFooter?: BlockInstance[]
+  frame?: 'page' | 'header' | 'footer'
+  onOpen: () => void
+  readOnly?: boolean
+}
+
 // 內嵌即時預覽:以桌面寬渲染 頁首(共用)+ 內容 + 頁尾(共用),量欄位寬做等比縮放。
 // 高度隨內容(縮放後)自然撐開;pointer-events 擋掉互動,整塊點擊 = 進編輯器。
 function InlinePreview({
@@ -121,14 +132,7 @@ function InlinePreview({
   frame,
   onOpen,
   readOnly,
-}: {
-  blocks: BlockInstance[]
-  contextHeader?: BlockInstance[]
-  contextFooter?: BlockInstance[]
-  frame?: 'page' | 'header' | 'footer'
-  onOpen: () => void
-  readOnly?: boolean
-}) {
+}: InlinePreviewProps) {
   const outerRef = useRef<HTMLButtonElement>(null)
   const innerRef = useRef<HTMLDivElement>(null)
   const [w, setW] = useState(0)

@@ -29,6 +29,21 @@ const OVERLAY_CSS = `
 .sf-overlay button.sf-danger:hover { background: #fff1f0 !important; color: #ff4d4f !important; }
 `
 
+type SelectionOverlayProps = {
+  canvasRef: RefObject<HTMLDivElement | null>
+  selectedId: string | null
+  selectedName: string | null
+  hasParent: boolean
+  blocks: BlockInstance[]
+  device: 'desktop' | 'mobile'
+  readOnly?: boolean
+  onSelectParent: () => void
+  onMove: (id: string, dir: -1 | 1) => void
+  onDuplicate: (id: string) => void
+  onDelete: (id: string) => void
+  onReorderBefore: (id: string, beforeId: string | null) => void
+}
+
 // 畫布上的選取 chrome:貼著選取元素的 bounding rect,畫藍框 + 名稱標籤 + 就近工具列。
 // 量測相對於 .sf-canvas(兩個 rect 都是 viewport 座標、同時取得 → 捲動時差值不變,免重算)。
 export function SelectionOverlay({
@@ -44,20 +59,7 @@ export function SelectionOverlay({
   onDuplicate,
   onDelete,
   onReorderBefore,
-}: {
-  canvasRef: RefObject<HTMLDivElement | null>
-  selectedId: string | null
-  selectedName: string | null
-  hasParent: boolean
-  blocks: BlockInstance[]
-  device: 'desktop' | 'mobile'
-  readOnly?: boolean
-  onSelectParent: () => void
-  onMove: (id: string, dir: -1 | 1) => void
-  onDuplicate: (id: string) => void
-  onDelete: (id: string) => void
-  onReorderBefore: (id: string, beforeId: string | null) => void
-}) {
+}: SelectionOverlayProps) {
   const [rect, setRect] = useState<Rect | null>(null)
   const [dragLine, setDragLine] = useState<Line | null>(null)
 
@@ -69,26 +71,31 @@ export function SelectionOverlay({
     }
     const sel = `[data-block-id="${CSS.escape(selectedId)}"]`
     const compute = () => {
-      const el = canvas.querySelector(sel) as HTMLElement | null
-      if (!el) {
+      const blockEl = canvas.querySelector(sel) as HTMLElement | null
+      if (!blockEl) {
         setRect(null)
         return
       }
-      const c = canvas.getBoundingClientRect()
-      const e = el.getBoundingClientRect()
-      setRect({ top: e.top - c.top, left: e.left - c.left, width: e.width, height: e.height })
+      const canvasRect = canvas.getBoundingClientRect()
+      const blockRect = blockEl.getBoundingClientRect()
+      setRect({
+        top: blockRect.top - canvasRect.top,
+        left: blockRect.left - canvasRect.left,
+        width: blockRect.width,
+        height: blockRect.height,
+      })
     }
     compute()
     // WC(Lit)可能延一幀才定版面 → 下一幀再量一次。
     const raf = requestAnimationFrame(compute)
-    const el = canvas.querySelector(sel) as HTMLElement | null
-    const ro = new ResizeObserver(compute)
-    if (el) ro.observe(el)
-    ro.observe(canvas)
+    const blockEl = canvas.querySelector(sel) as HTMLElement | null
+    const resizeObserver = new ResizeObserver(compute)
+    if (blockEl) resizeObserver.observe(blockEl)
+    resizeObserver.observe(canvas)
     window.addEventListener('resize', compute)
     return () => {
       cancelAnimationFrame(raf)
-      ro.disconnect()
+      resizeObserver.disconnect()
       window.removeEventListener('resize', compute)
     }
     // blocks / device 變 → 版面可能位移,重量測。
@@ -103,22 +110,24 @@ export function SelectionOverlay({
     e.stopPropagation()
     const canvas = canvasRef.current
     if (!canvas || !selectedId) return
-    const siblings = (parent?.children ?? blocks).filter((n) => n.id !== selectedId)
+    const siblings = (parent?.children ?? blocks).filter((node) => node.id !== selectedId)
     const dir: 'row' | 'column' =
       parent && (parent.data as { direction?: string }).direction === 'row' ? 'row' : 'column'
 
     const rectOf = (id: string) => {
-      const el = canvas.querySelector(`[data-block-id="${CSS.escape(id)}"]`) as HTMLElement | null
-      if (!el) return null
-      const c = canvas.getBoundingClientRect()
-      const r = el.getBoundingClientRect()
+      const blockEl = canvas.querySelector(
+        `[data-block-id="${CSS.escape(id)}"]`,
+      ) as HTMLElement | null
+      if (!blockEl) return null
+      const canvasRect = canvas.getBoundingClientRect()
+      const r = blockEl.getBoundingClientRect()
       return {
-        top: r.top - c.top,
-        left: r.left - c.left,
+        top: r.top - canvasRect.top,
+        left: r.left - canvasRect.left,
         width: r.width,
         height: r.height,
-        bottom: r.bottom - c.top,
-        right: r.right - c.left,
+        bottom: r.bottom - canvasRect.top,
+        right: r.right - canvasRect.left,
       }
     }
 
@@ -126,15 +135,15 @@ export function SelectionOverlay({
     let moved = false
 
     const onMove2 = (ev: PointerEvent) => {
-      const c = canvas.getBoundingClientRect()
-      const p = dir === 'row' ? ev.clientX - c.left : ev.clientY - c.top
+      const canvasRect = canvas.getBoundingClientRect()
+      const pointer = dir === 'row' ? ev.clientX - canvasRect.left : ev.clientY - canvasRect.top
       curBefore = null
-      for (const s of siblings) {
-        const r = rectOf(s.id)
+      for (const sibling of siblings) {
+        const r = rectOf(sibling.id)
         if (!r) continue
         const mid = dir === 'row' ? r.left + r.width / 2 : r.top + r.height / 2
-        if (p < mid) {
-          curBefore = s.id
+        if (pointer < mid) {
+          curBefore = sibling.id
           break
         }
       }
@@ -245,17 +254,14 @@ export function SelectionOverlay({
   )
 }
 
-function ToolBtn({
-  title,
-  onClick,
-  danger,
-  children,
-}: {
+type ToolBtnProps = {
   title: string
   onClick: () => void
   danger?: boolean
   children: ReactNode
-}) {
+}
+
+function ToolBtn({ title, onClick, danger, children }: ToolBtnProps) {
   return (
     <button
       type="button"

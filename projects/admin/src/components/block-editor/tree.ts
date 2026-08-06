@@ -159,10 +159,10 @@ export function insertAfterImm(
 }
 
 // target 是否在 node 的子孫裡(避免把節點拖進自己的子樹)。
-export function isDescendant(node: BlockInstance, targetId: string): boolean {
+export function checkIsDescendant(node: BlockInstance, targetId: string): boolean {
   if (!node.children) return false
   for (const c of node.children) {
-    if (c.id === targetId || isDescendant(c, targetId)) return true
+    if (c.id === targetId || checkIsDescendant(c, targetId)) return true
   }
   return false
 }

@@ -62,35 +62,38 @@ function stackCss(size: BlockSize, pos: Pos9 | undefined): string {
 }
 
 function sizeStyle(size: BlockSize | undefined, pos: Pos9 | undefined, parentAxis: Axis): string {
-  const s = size ?? {}
-  if (parentAxis === 'stack') return stackCss(s, pos)
-  const h = s.h ?? 'hug'
+  const blockSize = size ?? {}
+  if (parentAxis === 'stack') return stackCss(blockSize, pos)
+  const height = blockSize.h ?? 'hug'
   if (parentAxis === 'row' || parentAxis === 'column') {
     return [
       axisCss(
-        s.w ?? (parentAxis === 'row' ? 'hug' : 'fill'),
-        s.wPx,
+        blockSize.w ?? (parentAxis === 'row' ? 'hug' : 'fill'),
+        blockSize.wPx,
         parentAxis === 'row' ? 'main' : 'cross',
         'width',
       ),
-      axisCss(h, s.hPx, parentAxis === 'row' ? 'cross' : 'main', 'height'),
+      axisCss(height, blockSize.hPx, parentAxis === 'row' ? 'cross' : 'main', 'height'),
     ].join(';')
   }
-  const w = s.w ?? 'fill'
+  const width = blockSize.w ?? 'fill'
   return [
-    w === 'fixed' ? `width:${s.wPx ?? 100}px` : w === 'fill' ? 'width:100%' : 'width:fit-content',
-    h === 'fixed' ? `height:${s.hPx ?? 100}px` : 'height:auto',
+    width === 'fixed'
+      ? `width:${blockSize.wPx ?? 100}px`
+      : width === 'fill'
+        ? 'width:100%'
+        : 'width:fit-content',
+    height === 'fixed' ? `height:${blockSize.hPx ?? 100}px` : 'height:auto',
   ].join(';')
 }
 
-// 選取/落點框改用畫布的動態 CSS(靠 data-block-id 命中),不再傳 props 到每顆 → memo 生效。
-function BlockViewInner({
-  instance,
-  parentAxis = 'flow',
-}: {
+type BlockViewInnerProps = {
   instance: BlockInstance
   parentAxis?: Axis
-}) {
+}
+
+// 選取/落點框改用畫布的動態 CSS(靠 data-block-id 命中),不再傳 props 到每顆 → memo 生效。
+function BlockViewInner({ instance, parentAxis = 'flow' }: BlockViewInnerProps) {
   const nodeRef = useRef<(HTMLElement & { data?: unknown }) | null>(null)
   // 最新的 instance/parentAxis 給 callback ref 用(避免 ref 每次 render 換身分)。
   const instRef = useRef(instance)
@@ -131,8 +134,8 @@ function BlockViewInner({
         ? ((instance.data.direction as 'row' | 'column') ?? 'column')
         : 'flow'
 
-  const children = instance.children?.map((c) => (
-    <BlockView key={c.id} instance={c} parentAxis={childAxis} />
+  const children = instance.children?.map((child) => (
+    <BlockView key={child.id} instance={child} parentAxis={childAxis} />
   ))
 
   return createElement(bt.tag, attrs, children)

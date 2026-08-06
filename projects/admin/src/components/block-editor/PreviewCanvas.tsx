@@ -7,7 +7,9 @@ import { SelectionOverlay } from './SelectionOverlay'
 
 const STATIC_CSS = `.sf-canvas [data-block-id] { cursor: pointer; }`
 
-function ContextBand({ label, children }: { label: string; children: ReactNode }) {
+type ContextBandProps = { label: string; children: ReactNode }
+
+function ContextBand({ label, children }: ContextBandProps) {
   return (
     <div className="relative opacity-90">
       <div className="absolute left-1 top-1 z-3 rounded bg-black/55 px-1.5 py-px text-[11px] text-white">
@@ -28,6 +30,26 @@ function FauxBody() {
   )
 }
 
+type PreviewCanvasProps = {
+  blocks: BlockInstance[]
+  selectedId: string | null
+  selectedName: string | null
+  hasParent: boolean
+  onSelect: (id: string | null) => void
+  onDropBlock: (type: string, parentId: string | null) => void
+  onDelete: (id: string) => void
+  onDuplicate: (id: string) => void
+  onMove: (id: string, dir: -1 | 1) => void
+  onSelectParent: () => void
+  onReorderBefore: (id: string, beforeId: string | null) => void
+  device: 'desktop' | 'mobile'
+  variant: string
+  header?: BlockInstance[]
+  footer?: BlockInstance[]
+  frame?: 'page' | 'header' | 'footer'
+  readOnly?: boolean
+}
+
 export function PreviewCanvas({
   blocks,
   selectedId,
@@ -46,25 +68,7 @@ export function PreviewCanvas({
   footer,
   frame = 'page',
   readOnly,
-}: {
-  blocks: BlockInstance[]
-  selectedId: string | null
-  selectedName: string | null
-  hasParent: boolean
-  onSelect: (id: string | null) => void
-  onDropBlock: (type: string, parentId: string | null) => void
-  onDelete: (id: string) => void
-  onDuplicate: (id: string) => void
-  onMove: (id: string, dir: -1 | 1) => void
-  onSelectParent: () => void
-  onReorderBefore: (id: string, beforeId: string | null) => void
-  device: 'desktop' | 'mobile'
-  variant: string
-  header?: BlockInstance[]
-  footer?: BlockInstance[]
-  frame?: 'page' | 'header' | 'footer'
-  readOnly?: boolean
-}) {
+}: PreviewCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null)
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect

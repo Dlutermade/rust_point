@@ -90,7 +90,7 @@ interface Props {
 // 自動標籤(忽略自訂名)—— Figma 式「每個節點自我描述」。
 function autoLabelOf(n: { type: string; data: Record<string, unknown> }): string {
   const d = n.data ?? {}
-  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null)
+  const str = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
   const trunc = (s: string) => (s.length > 14 ? `${s.slice(0, 14)}…` : s)
   const text = str(d.text) ?? str(d.label)
   if (text) return trunc(text)
@@ -111,31 +111,33 @@ interface EditingState {
   auto: string
 }
 
-function SortableRow({
-  item,
-  depth,
-  selected,
-  collapsed,
-  editing,
-  readOnly,
-  onSelect,
-  onToggleCollapse,
-  onMenu,
-  onRename,
-  onEndRename,
-}: {
+type SortableRowProps = {
   item: FlatBlock
   depth: number
   selected: boolean
-  collapsed: boolean
-  editing: EditingState | null
+  isCollapsed: boolean
+  editingState: EditingState | null
   readOnly?: boolean
   onSelect: (id: string | null) => void
   onToggleCollapse: (id: string) => void
   onMenu: (item: FlatBlock, key: string) => void
   onRename: (item: FlatBlock, val: string) => void
   onEndRename: () => void
-}) {
+}
+
+function SortableRow({
+  item,
+  depth,
+  selected,
+  isCollapsed,
+  editingState,
+  readOnly,
+  onSelect,
+  onToggleCollapse,
+  onMenu,
+  onRename,
+  onEndRename,
+}: SortableRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
     disabled: readOnly,
@@ -153,7 +155,7 @@ function SortableRow({
       style={{ paddingLeft: 4 + depth * INDENT_WIDTH }}
       onClick={(e) => {
         e.stopPropagation()
-        if (!editing) onSelect(selected ? null : item.id)
+        if (!editingState) onSelect(selected ? null : item.id)
       }}
       {...attributes}
       {...listeners}
@@ -167,18 +169,18 @@ function SortableRow({
             onToggleCollapse(item.id)
           }}
         >
-          {collapsed ? <CaretRightOutlined /> : <CaretDownOutlined />}
+          {isCollapsed ? <CaretRightOutlined /> : <CaretDownOutlined />}
         </span>
       ) : (
         <span className="sf-caret" />
       )}
       <span className="sf-row-ic">{PALETTE_ICONS[item.type]}</span>
-      {editing ? (
+      {editingState ? (
         <input
           className="sf-rename"
           autoFocus
-          defaultValue={editing.prefill}
-          placeholder={editing.auto}
+          defaultValue={editingState.prefill}
+          placeholder={editingState.auto}
           onFocus={(e) => e.currentTarget.select()}
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
@@ -224,8 +226,8 @@ function BlockListInner({
   onReorderMove,
   readOnly,
 }: Props) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
-  const [editing, setEditing] = useState<EditingState | null>(null)
+  const [collapsedIdSet, setCollapsedIdSet] = useState<Set<string>>(() => new Set())
+  const [editingState, setEditingState] = useState<EditingState | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
   const [offsetLeft, setOffsetLeft] = useState(0)
@@ -234,10 +236,12 @@ function BlockListInner({
 
   const flattened = useMemo(() => {
     const all = flattenBlocks(blocks)
-    const collapsedIds = all.filter((i) => i.hasChildren && collapsed.has(i.id)).map((i) => i.id)
+    const collapsedIds = all
+      .filter((i) => i.hasChildren && collapsedIdSet.has(i.id))
+      .map((i) => i.id)
     const hidden = activeId ? [activeId, ...collapsedIds] : collapsedIds
     return removeChildrenOf(all, hidden)
-  }, [blocks, collapsed, activeId])
+  }, [blocks, collapsedIdSet, activeId])
 
   const sortedIds = useMemo(() => flattened.map((i) => i.id), [flattened])
   const activeItem = activeId ? (flattened.find((i) => i.id === activeId) ?? null) : null
@@ -246,10 +250,10 @@ function BlockListInner({
 
   const beginRename = (item: FlatBlock) => {
     const auto = autoLabelOf(item)
-    setEditing({ id: item.id, prefill: item.name?.trim() || auto, auto })
+    setEditingState({ id: item.id, prefill: item.name?.trim() || auto, auto })
   }
   const toggleCollapse = (id: string) =>
-    setCollapsed((s) => {
+    setCollapsedIdSet((s) => {
       const n = new Set(s)
       if (n.has(id)) n.delete(id)
       else n.add(id)
@@ -261,9 +265,9 @@ function BlockListInner({
     else if (key === 'delete') onDelete(item.id)
   }
   const submitRename = (item: FlatBlock, val: string) => {
-    const v = val.trim()
-    onRename(item.id, v === autoLabelOf(item) ? '' : v)
-    setEditing(null)
+    const trimmed = val.trim()
+    onRename(item.id, trimmed === autoLabelOf(item) ? '' : trimmed)
+    setEditingState(null)
   }
 
   const reset = () => {
@@ -338,14 +342,14 @@ function BlockListInner({
                   item={item}
                   depth={item.id === activeId && projected ? projected.depth : item.depth}
                   selected={item.id === selectedId}
-                  collapsed={collapsed.has(item.id)}
-                  editing={editing?.id === item.id ? editing : null}
+                  isCollapsed={collapsedIdSet.has(item.id)}
+                  editingState={editingState?.id === item.id ? editingState : null}
                   readOnly={readOnly}
                   onSelect={onSelect}
                   onToggleCollapse={toggleCollapse}
                   onMenu={onMenu}
                   onRename={submitRename}
-                  onEndRename={() => setEditing(null)}
+                  onEndRename={() => setEditingState(null)}
                 />
               ))}
             </ul>

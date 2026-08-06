@@ -61,8 +61,8 @@ function specificity(t?: Targeting): number {
 // 外框(頁首 / 頁尾)不跑完整 targeting(見 docs business/09 Model B):
 // 頁首/頁尾是全站外框,只有「站台預設」概念 —— 取被標為預設的那個 active 模板,沒有就取第一個 active。
 export function resolveChrome(templates: PageTemplate[]): PageTemplate | undefined {
-  const active = templates.filter((v) => v.status === 'active')
-  return active.find((v) => v.isDefault) ?? active[0]
+  const active = templates.filter((template) => template.status === 'active')
+  return active.find((template) => template.isDefault) ?? active[0]
 }
 
 // 頁面(首頁…)才跑完整生效:FILTER(status ∧ 時間 ∧ 受眾 ∧ 來源)→ SORT(priority → specificity → 常態墊底)。
