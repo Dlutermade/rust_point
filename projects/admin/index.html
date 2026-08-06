@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>電商後台</title>
+    <!-- 後台不該被索引。放靜態 HTML 而非 route head:不跑 JS 的爬蟲也要看得到。 -->
+    <meta name="robots" content="noindex, nofollow" />
+    <!-- 這裡刻意沒有 <title>:瀏覽器取文件裡第一個 title,靜態的會贏過 HeadContent
+         初次載入掛上去的那個,結果每次重新整理都顯示保底值。標題一律由 route head 出。 -->
   </head>
   <body>
     <div id="root"></div>

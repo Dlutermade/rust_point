@@ -6,9 +6,10 @@ import {
   QuestionCircleOutlined,
 } from '@ant-design/icons'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
+import { SITE_NAME } from '../shared/head'
 
 // 後台外殼交給 ProLayout:側邊選單 / 頂部 / 麵包屑都由 pro 管;選單項接 TanStack Router 的 Link。
-const menuRoute = {
+const MENU_ROUTE = {
   path: '/',
   routes: [
     {
@@ -30,14 +31,20 @@ export function BaseLayout() {
 
   return (
     <ProLayout
-      title="電商後台"
+      // 不傳 title:ProLayout 會拿它去指令式改寫 document.title,而且是跟著「選單項」比對,
+      // 不在選單裡的頁面(詳細 / 新建)就只剩站名。標題一律由各 route 的 head 宣告
+      // (見 shared/head.ts);品牌改用 headerTitleRender 自己畫在頂欄,
+      // 不畫的話 ProLayout 會掉回預設的「Ant Design Pro」。
+      title={undefined}
       logo={false}
+      pageTitleRender={false}
+      headerTitleRender={() => <h1 className="m-0 text-base font-semibold">{SITE_NAME}</h1>}
       layout="mix"
       fixedHeader
       fixSiderbar
       contentWidth="Fluid"
       location={{ pathname }}
-      route={menuRoute}
+      route={MENU_ROUTE}
       menuItemRender={(item, dom) => (item.path ? <Link to={item.path}>{dom}</Link> : dom)}
     >
       <Outlet />
