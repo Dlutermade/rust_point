@@ -1,15 +1,18 @@
-import { App, Button, Form, Spin } from 'antd'
+import { App, Button, Form, Space, Spin } from 'antd'
 import { CopyOutlined, SaveOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { PageContainer } from '@ant-design/pro-components'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { pageTitle } from '../../../../shared/head'
 import { headerApi } from '../../../../api/header'
-import { PageFormShell } from '../../../../components/page-template/PageFormShell'
-import type { PageFormValues } from '../../../../components/page-template/PageFormShell'
+import { HeaderTemplateForm } from '../../../../components/page-template/header/HeaderTemplateForm'
+import type { HeaderTemplateFormValues } from '../../../../components/page-template/header/HeaderTemplateForm'
 import { StatusTag } from '../../../../components/page-template/StatusTag'
-import { buildPublishConfirm } from '../../../../components/page-template/publishConfirm'
+import { genHeaderPublishConfirm } from '../../../../components/page-template/header/headerPublishConfirm'
 
 // /pages/header/$templateId — 編輯(草稿)或檢視(已發布,唯讀)某個頁首,一律走表單。
 export const Route = createFileRoute('/_layout/pages/header/$templateId')({
+  head: () => ({ meta: [{ title: pageTitle('頁首內容') }] }),
   component: HeaderEditorPage,
 })
 
@@ -17,43 +20,57 @@ function HeaderEditorPage() {
   const { templateId } = Route.useParams()
   const navigate = useNavigate()
   const { message, modal } = App.useApp()
-  const qc = useQueryClient()
-  const [form] = Form.useForm<PageFormValues>()
+  const queryClient = useQueryClient()
+  const [form] = Form.useForm<HeaderTemplateFormValues>()
 
-  const entity = useQuery({
-    queryKey: ['header', 'entity', templateId],
+  const templateQuery = useQuery({
+    queryKey: ['header', 'template', templateId],
     queryFn: () => headerApi.get(templateId),
   })
-  const readOnly = entity.data ? entity.data.status !== 'draft' : false
+  const isReadOnly = templateQuery.data ? templateQuery.data.status !== 'draft' : false
 
-  const saveDraft = useMutation({
-    mutationFn: (values: PageFormValues) =>
-      headerApi.saveDraft(templateId, { content: values.content, name: values.name.trim() }),
+  // 送出前先轉換:只帶後端要的欄位,不把表單狀態原封不動丟過去。
+  const transferFormValuesToDraftPatch = (values: HeaderTemplateFormValues) => ({
+    content: values.content,
+    name: values.name.trim(),
+  })
+
+  const saveDraftMutation = useMutation({
+    mutationFn: (values: HeaderTemplateFormValues) =>
+      headerApi.saveDraft(templateId, transferFormValuesToDraftPatch(values)),
     onSuccess: () => {
       message.success('已儲存草稿')
-      qc.invalidateQueries({ queryKey: ['header'] })
+      void queryClient.invalidateQueries({ queryKey: ['header'] })
     },
   })
-  const publish = useMutation({
-    mutationFn: async (values: PageFormValues) => {
-      await headerApi.saveDraft(templateId, { content: values.content, name: values.name.trim() })
+  const publishMutation = useMutation({
+    mutationFn: async (values: HeaderTemplateFormValues) => {
+      await headerApi.saveDraft(templateId, transferFormValuesToDraftPatch(values))
       await headerApi.publish(templateId, {})
     },
     onSuccess: () => {
       message.success('已發布')
-      qc.invalidateQueries({ queryKey: ['header'] })
+      void queryClient.invalidateQueries({ queryKey: ['header'] })
       navigate({ to: '/pages/header' })
     },
   })
-  const runDraft = () => form.validateFields().then((v) => saveDraft.mutate(v))
-  const runPublish = () =>
-    form.validateFields().then((v) => {
-      modal.confirm(
-        buildPublishConfirm({ name: v.name, kind: 'chrome' }, () => publish.mutateAsync(v)),
-      )
-    })
+  // validateFields() 驗證失敗會 reject —— 用 catch 收掉,antd 已在欄位上標出錯誤。
+  const onSaveDraft = async () => {
+    const values = await form.validateFields().catch(() => null)
+    if (!values) return
+    saveDraftMutation.mutate(values)
+  }
+  const onPublish = async () => {
+    const values = await form.validateFields().catch(() => null)
+    if (!values) return
+    modal.confirm(
+      genHeaderPublishConfirm({ name: values.name }, () => publishMutation.mutateAsync(values)),
+    )
+  }
 
-  if (entity.isLoading) {
+  const templateName = templateQuery.data?.name ?? '頁首'
+
+  if (templateQuery.isLoading) {
     return (
       <div className="p-16 text-center">
         <Spin />
@@ -62,18 +79,18 @@ function HeaderEditorPage() {
   }
 
   return (
-    <PageFormShell
-      heading={entity.data?.name ?? '頁首'}
-      statusTag={entity.data ? <StatusTag v={entity.data} /> : undefined}
-      form={form}
-      initialValues={{ name: entity.data?.name ?? '', content: entity.data?.content ?? [] }}
-      readOnly={readOnly}
-      editorTitle={entity.data?.name ?? '頁首'}
-      previewId={templateId}
-      frame="header"
-      onBackToList={() => navigate({ to: '/pages/header' })}
-      footerActions={
-        readOnly
+    <PageContainer
+      header={{
+        title: (
+          <Space>
+            {templateName}
+            {templateQuery.data ? <StatusTag template={templateQuery.data} /> : undefined}
+          </Space>
+        ),
+        onBack: () => navigate({ to: '/pages/header' }),
+      }}
+      footer={
+        isReadOnly
           ? [
               <Button
                 key="dup"
@@ -85,20 +102,31 @@ function HeaderEditorPage() {
               </Button>,
             ]
           : [
-              <Button key="draft" loading={saveDraft.isPending} onClick={runDraft}>
+              <Button key="draft" loading={saveDraftMutation.isPending} onClick={onSaveDraft}>
                 儲存草稿
               </Button>,
               <Button
                 key="pub"
                 type="primary"
                 icon={<SaveOutlined />}
-                loading={publish.isPending}
-                onClick={runPublish}
+                loading={publishMutation.isPending}
+                onClick={onPublish}
               >
                 發布
               </Button>,
             ]
       }
-    />
+    >
+      <HeaderTemplateForm
+        form={form}
+        initialValues={{
+          name: templateQuery.data?.name ?? '',
+          content: templateQuery.data?.content ?? [],
+        }}
+        readOnly={isReadOnly}
+        editorTitle={templateName}
+        previewId={templateId}
+      />
+    </PageContainer>
   )
 }

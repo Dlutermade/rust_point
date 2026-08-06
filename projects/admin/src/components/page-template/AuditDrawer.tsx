@@ -2,7 +2,7 @@ import { Drawer, Empty, Timeline } from 'antd'
 import { useQuery } from '@tanstack/react-query'
 import type { AuditAction, AuditEntry } from '../../api/types'
 
-const actionLabel: Record<AuditAction, string> = {
+const ACTION_LABEL: Record<AuditAction, string> = {
   create: '建立草稿',
   'save-draft': '存草稿',
   publish: '發布',
@@ -13,36 +13,38 @@ const actionLabel: Record<AuditAction, string> = {
   'set-default': '設為站台預設',
 }
 
+type AuditDrawerProps = {
+  isOpened: boolean
+  templateId: string | null
+  loadEntries: (id: string) => Promise<AuditEntry[]>
+  onCloseDrawer: () => void
+}
+
 // 異動紀錄(共用)。每個模板的操作歷史 —— 可回溯「何時被誰做了什麼」。
 export function AuditDrawer({
-  open,
+  isOpened,
   templateId,
-  load,
-  onClose,
-}: {
-  open: boolean
-  templateId: string | null
-  load: (id: string) => Promise<AuditEntry[]>
-  onClose: () => void
-}) {
-  const q = useQuery({
+  loadEntries,
+  onCloseDrawer,
+}: AuditDrawerProps) {
+  const auditQuery = useQuery({
     queryKey: ['audit', templateId],
-    queryFn: () => load(templateId as string),
-    enabled: open && !!templateId,
+    queryFn: () => loadEntries(templateId as string),
+    enabled: isOpened && !!templateId,
   })
 
   return (
-    <Drawer title="異動紀錄" open={open} onClose={onClose} size="default">
-      {q.data && q.data.length > 0 ? (
+    <Drawer title="異動紀錄" open={isOpened} onClose={onCloseDrawer} size="default">
+      {auditQuery.data && auditQuery.data.length > 0 ? (
         <Timeline
-          items={q.data.map((a) => ({
+          items={auditQuery.data.map((entry) => ({
             children: (
               <div>
                 <div>
-                  {actionLabel[a.action] ?? a.action}
-                  {a.detail ? ` · ${a.detail}` : ''}
+                  {ACTION_LABEL[entry.action] ?? entry.action}
+                  {entry.detail ? ` · ${entry.detail}` : ''}
                 </div>
-                <div className="text-sm text-[#999]">{a.at}</div>
+                <div className="text-sm text-[#999]">{entry.at}</div>
               </div>
             ),
           }))}

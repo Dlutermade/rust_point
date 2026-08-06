@@ -1,101 +1,109 @@
 import { App, Button, Form, Spin } from 'antd'
 import { SaveOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { PageContainer } from '@ant-design/pro-components'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { pageTitle } from '../../../../shared/head'
 import { homeApi } from '../../../../api/home'
 import type { ChromeOverride, Targeting } from '../../../../api/types'
-import { PageFormShell } from '../../../../components/page-template/PageFormShell'
-import type { PageFormValues } from '../../../../components/page-template/PageFormShell'
-import { TargetingFields } from '../../../../components/page-template/TargetingFields'
-import { ChromePicker } from '../../../../components/page-template/ChromePicker'
-import { buildPublishConfirm } from '../../../../components/page-template/publishConfirm'
+import { HomeTemplateForm } from '../../../../components/page-template/home/HomeTemplateForm'
+import type { HomeTemplateFormValues } from '../../../../components/page-template/home/HomeTemplateForm'
+import { HomeTargetingFields } from '../../../../components/page-template/home/HomeTargetingFields'
+import { HomeChromePicker } from '../../../../components/page-template/home/HomeChromePicker'
+import { genHomePublishConfirm } from '../../../../components/page-template/home/homePublishConfirm'
 
 // /pages/home/new — 新建首頁。?from=<id> 走複製流程:載入來源設定當起點,按儲存草稿/發布才寫 server。
 export const Route = createFileRoute('/_layout/pages/home/new')({
+  head: () => ({ meta: [{ title: pageTitle('新建首頁模板') }] }),
   component: HomeNewPage,
   validateSearch: (search: Record<string, unknown>): { from?: string } => ({
     from: typeof search.from === 'string' ? search.from : undefined,
   }),
 })
 
-interface HomeFormValues extends PageFormValues {
+interface HomeFormValues extends HomeTemplateFormValues {
   targeting: Targeting
   chrome: ChromeOverride
+}
+
+// 一次送出兩種意圖:存草稿 or 直接發布,共用同一條建立流程。
+type SubmitArgs = {
+  action: 'draft' | 'publish'
+  values: HomeFormValues
 }
 
 function HomeNewPage() {
   const navigate = useNavigate()
   const { from } = Route.useSearch()
   const { message, modal } = App.useApp()
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   const [form] = Form.useForm<HomeFormValues>()
   // 訂閱表單的 chrome 欄位(單一來源;只在 chrome 變時重繪,不另存 state、不用 onValuesChange)。
   const chrome = (Form.useWatch('chrome', form) as ChromeOverride | undefined) ?? {}
 
   // 複製來源(只有 ?from 時抓)。
-  const source = useQuery({
-    queryKey: ['home', 'entity', from],
+  const sourceQuery = useQuery({
+    queryKey: ['home', 'template', from],
     queryFn: () => homeApi.get(from as string),
     enabled: !!from,
   })
-  const src = from ? source.data : undefined
+  const sourceTemplate = from ? sourceQuery.data : undefined
 
-  const headerOpts = useQuery({
+  const headerOptionsQuery = useQuery({
     queryKey: ['home', 'header-opts'],
     queryFn: () => homeApi.headerOptions(),
   })
-  const footerOpts = useQuery({
+  const footerOptionsQuery = useQuery({
     queryKey: ['home', 'footer-opts'],
     queryFn: () => homeApi.footerOptions(),
   })
-  const header = useQuery({
+  const headerContentQuery = useQuery({
     queryKey: ['home', 'ctx-header', chrome.headerId ?? 'default'],
     queryFn: () =>
       chrome.headerId ? homeApi.layoutContent(chrome.headerId) : homeApi.activeHeader(),
   })
-  const footer = useQuery({
+  const footerContentQuery = useQuery({
     queryKey: ['home', 'ctx-footer', chrome.footerId ?? 'default'],
     queryFn: () =>
       chrome.footerId ? homeApi.layoutContent(chrome.footerId) : homeApi.activeFooter(),
   })
 
-  const submit = useMutation({
-    mutationFn: async ({
-      action,
-      values,
-    }: {
-      action: 'draft' | 'publish'
-      values: HomeFormValues
-    }) => {
-      const t = await homeApi.createDraft(values.name.trim())
-      await homeApi.saveDraft(t.id, {
+  const submitMutation = useMutation({
+    mutationFn: async ({ action, values }: SubmitArgs) => {
+      const created = await homeApi.createDraft(values.name.trim())
+      await homeApi.saveDraft(created.id, {
         content: values.content,
         targeting: values.targeting,
         chrome: values.chrome,
       })
-      if (action === 'publish') await homeApi.publish(t.id, {})
-      return { id: t.id, action }
+      if (action === 'publish') await homeApi.publish(created.id, {})
+      return { id: created.id, action }
     },
     onSuccess: ({ id, action }) => {
       message.success(action === 'publish' ? '已發布' : '已儲存草稿')
-      qc.invalidateQueries({ queryKey: ['home'] })
+      void queryClient.invalidateQueries({ queryKey: ['home'] })
       if (action === 'publish') navigate({ to: '/pages/home' })
       else navigate({ to: '/pages/home/$templateId', params: { templateId: id } })
     },
   })
-  const runDraft = () =>
-    form.validateFields().then((values) => submit.mutate({ action: 'draft', values }))
-  const runPublish = () =>
-    form.validateFields().then((values) => {
-      modal.confirm(
-        buildPublishConfirm(
-          { name: values.name, targeting: values.targeting, chrome: values.chrome, kind: 'page' },
-          () => submit.mutateAsync({ action: 'publish', values }),
-        ),
-      )
-    })
+  // validateFields() 驗證失敗會 reject —— 用 catch 收掉,antd 已在欄位上標出錯誤。
+  const onSaveDraft = async () => {
+    const values = await form.validateFields().catch(() => null)
+    if (!values) return
+    submitMutation.mutate({ action: 'draft', values })
+  }
+  const onPublish = async () => {
+    const values = await form.validateFields().catch(() => null)
+    if (!values) return
+    modal.confirm(
+      genHomePublishConfirm(
+        { name: values.name, targeting: values.targeting, chrome: values.chrome },
+        () => submitMutation.mutateAsync({ action: 'publish', values }),
+      ),
+    )
+  }
 
-  if (from && source.isLoading) {
+  if (from && sourceQuery.isLoading) {
     return (
       <div className="p-16 text-center">
         <Spin />
@@ -106,12 +114,12 @@ function HomeNewPage() {
   const extra = (
     <>
       <Form.Item name="targeting" label="生效設定">
-        <TargetingFields />
+        <HomeTargetingFields />
       </Form.Item>
       <Form.Item name="chrome" label="頁面外框（不選 = 站台預設）">
-        <ChromePicker
-          headerOptions={headerOpts.data ?? []}
-          footerOptions={footerOpts.data ?? []}
+        <HomeChromePicker
+          headerOptions={headerOptionsQuery.data ?? []}
+          footerOptions={footerOptionsQuery.data ?? []}
           loadContent={homeApi.layoutContent}
         />
       </Form.Item>
@@ -119,35 +127,40 @@ function HomeNewPage() {
   )
 
   return (
-    <PageFormShell
-      heading={src ? `複製自「${src.name}」` : '新建首頁模板'}
-      form={form}
-      initialValues={{
-        name: src ? `${src.name} 副本` : '',
-        targeting: src?.targeting ?? {},
-        chrome: src?.chrome ?? {},
-        content: src?.content ?? [],
+    <PageContainer
+      header={{
+        title: sourceTemplate ? `複製自「${sourceTemplate.name}」` : '新建首頁模板',
+        onBack: () => navigate({ to: '/pages/home' }),
       }}
-      extraFields={extra}
-      editorTitle="編輯首頁內容"
-      previewId="new"
-      contextHeader={header.data}
-      contextFooter={footer.data}
-      onBackToList={() => navigate({ to: '/pages/home' })}
-      footerActions={[
-        <Button key="draft" loading={submit.isPending} onClick={runDraft}>
+      footer={[
+        <Button key="draft" loading={submitMutation.isPending} onClick={onSaveDraft}>
           儲存草稿
         </Button>,
         <Button
           key="pub"
           type="primary"
           icon={<SaveOutlined />}
-          loading={submit.isPending}
-          onClick={runPublish}
+          loading={submitMutation.isPending}
+          onClick={onPublish}
         >
           發布
         </Button>,
       ]}
-    />
+    >
+      <HomeTemplateForm
+        form={form}
+        initialValues={{
+          name: sourceTemplate ? `${sourceTemplate.name} 副本` : '',
+          targeting: sourceTemplate?.targeting ?? {},
+          chrome: sourceTemplate?.chrome ?? {},
+          content: sourceTemplate?.content ?? [],
+        }}
+        extraFields={extra}
+        editorTitle="編輯首頁內容"
+        previewId="new"
+        contextHeader={headerContentQuery.data}
+        contextFooter={footerContentQuery.data}
+      />
+    </PageContainer>
   )
 }

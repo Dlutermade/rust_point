@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { pageTitle } from '../../shared/head'
 
 // 進站首頁 `/`(後台殼內,有側欄)。先最陽春,之後長成儀表板。
 export const Route = createFileRoute('/_layout/')({
+  head: () => ({ meta: [{ title: pageTitle('總覽') }] }),
   component: DashboardHome,
 })
 

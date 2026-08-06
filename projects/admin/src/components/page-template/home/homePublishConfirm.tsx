@@ -1,10 +1,11 @@
 import { Descriptions } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
 import type { ModalFuncProps } from 'antd'
-import type { ChromeOverride, Targeting, UtmRule } from '../../api/types'
-import { hasUtm } from '../../api/resolve'
+import type { ChromeOverride, Targeting, UtmRule } from '../../../api/types'
+import { hasUtm } from '../../../api/resolve'
 
-// 發布前的防呆:名稱放標題;頁面才攤生效資訊,外框只留一句凍結提醒。
+// 首頁模板的發布防呆:名稱放標題,攤開生效資訊(檔期 / 受眾 / 來源 / 優先序 / 外框)。
+// 外框(頁首 / 頁尾)沒有這些維度,各自有自己的版本。
 
 export function scheduleText(t?: Targeting): string {
   const s = t?.schedule
@@ -41,14 +42,12 @@ function chromeText(c?: ChromeOverride): string {
   return `頁首 ${c?.headerId ? '指定' : '站台預設'}、頁尾 ${c?.footerId ? '指定' : '站台預設'}`
 }
 
-function FreezeNote({ kind }: { kind: 'page' | 'chrome' }) {
+function FreezeNote() {
   return (
     <div className="flex items-start gap-2 rounded-md bg-[#fff7e6] p-3 text-sm leading-relaxed text-[#ad6800]">
       <ExclamationCircleOutlined className="mt-1 shrink-0" />
       <span>
-        {kind === 'page'
-          ? '發布後內容與設定即鎖定，無法再修改。'
-          : '發布後即鎖定，且不會自動設為站台預設。'}
+        發布後內容與設定即鎖定，無法再修改。
         <br />
         需調整請複製新版再改。
       </span>
@@ -56,40 +55,41 @@ function FreezeNote({ kind }: { kind: 'page' | 'chrome' }) {
   )
 }
 
-function PublishSummary({
-  targeting,
-  chrome,
-  kind,
-}: {
+type PublishSummaryProps = {
   targeting?: Targeting
   chrome?: ChromeOverride
-  kind: 'page' | 'chrome'
-}) {
+}
+
+function PublishSummary({ targeting, chrome }: PublishSummaryProps) {
   return (
     <div className="mt-2 flex flex-col gap-4">
-      {kind === 'page' && (
-        <Descriptions column={1} size="small" labelStyle={{ width: 80, color: '#8c8c8c' }}>
-          <Descriptions.Item label="生效時間">{scheduleText(targeting)}</Descriptions.Item>
-          <Descriptions.Item label="受眾">{audienceText(targeting)}</Descriptions.Item>
-          <Descriptions.Item label="來源">{sourceText(targeting)}</Descriptions.Item>
-          <Descriptions.Item label="優先序">{targeting?.priority ?? 0}</Descriptions.Item>
-          <Descriptions.Item label="頁面外框">{chromeText(chrome)}</Descriptions.Item>
-        </Descriptions>
-      )}
-      <FreezeNote kind={kind} />
+      <Descriptions
+        column={1}
+        size="small"
+        styles={{ label: { width: 80, color: '#8c8c8c' } }}
+        items={[
+          { key: 'schedule', label: '生效時間', children: scheduleText(targeting) },
+          { key: 'audience', label: '受眾', children: audienceText(targeting) },
+          { key: 'source', label: '來源', children: sourceText(targeting) },
+          { key: 'priority', label: '優先序', children: targeting?.priority ?? 0 },
+          { key: 'chrome', label: '頁面外框', children: chromeText(chrome) },
+        ]}
+      />
+      <FreezeNote />
     </div>
   )
 }
 
-export function buildPublishConfirm(
-  opts: { name: string; targeting?: Targeting; chrome?: ChromeOverride; kind: 'page' | 'chrome' },
+// gen*:從模板資料產生 antd Modal 的設定物件(衍生值,不改動輸入)。
+export function genHomePublishConfirm(
+  opts: { name: string; targeting?: Targeting; chrome?: ChromeOverride },
   onOk: () => Promise<unknown> | void,
 ): ModalFuncProps {
   return {
     title: `確認發布「${opts.name || '未命名'}」?`,
     width: 460,
     icon: null,
-    content: <PublishSummary targeting={opts.targeting} chrome={opts.chrome} kind={opts.kind} />,
+    content: <PublishSummary targeting={opts.targeting} chrome={opts.chrome} />,
     okText: '確認發布',
     cancelText: '取消',
     onOk,

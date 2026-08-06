@@ -11,23 +11,21 @@ import {
 } from 'antd'
 import { DeleteOutlined, PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import type { Targeting, UtmRule } from '../../api/types'
+import type { Targeting, UtmRule } from '../../../api/types'
 
-// 生效設定:三個維度 —— 生效時間 / 受眾 / 來源(UTM 條件組 + 地理位置)+ 優先序。受控,純顯示不抓資料。
-// 排版依 Ant Design Pro 表單:垂直頂標籤、固定窄寬不滿版;群組一句說明取代逐欄小字,複雜語意用 ⓘ tooltip。
-export function TargetingFields({
-  value,
-  onChange,
-  readOnly,
-}: {
+type HomeTargetingFieldsProps = {
   value?: Targeting
   onChange?: (t: Targeting) => void
   readOnly?: boolean
-}) {
-  const t = value ?? {}
-  const patch = (p: Partial<Targeting>) => onChange?.({ ...t, ...p })
-  const schedule = t.schedule ?? {}
-  const source = t.source ?? {}
+}
+
+// 生效設定:三個維度 —— 生效時間 / 受眾 / 來源(UTM 條件組 + 地理位置)+ 優先序。受控,純顯示不抓資料。
+// 排版依 Ant Design Pro 表單:垂直頂標籤、固定窄寬不滿版;群組一句說明取代逐欄小字,複雜語意用 ⓘ tooltip。
+export function HomeTargetingFields({ value, onChange, readOnly }: HomeTargetingFieldsProps) {
+  const targeting = value ?? {}
+  const patch = (changes: Partial<Targeting>) => onChange?.({ ...targeting, ...changes })
+  const schedule = targeting.schedule ?? {}
+  const source = targeting.source ?? {}
   const rules = source.utm ?? []
 
   const setSchedule = (s: { start?: string; end?: string }) => {
@@ -54,7 +52,7 @@ export function TargetingFields({
               className="flex-1"
               placeholder="開始"
               value={schedule.start ? dayjs(schedule.start) : null}
-              onChange={(d) => setSchedule({ start: d?.toISOString() })}
+              onChange={(date) => setSchedule({ start: date?.toISOString() })}
             />
             <span className="text-[#999]">~</span>
             <DatePicker
@@ -62,7 +60,7 @@ export function TargetingFields({
               className="flex-1"
               placeholder="結束"
               value={schedule.end ? dayjs(schedule.end) : null}
-              onChange={(d) => setSchedule({ end: d?.toISOString() })}
+              onChange={(date) => setSchedule({ end: date?.toISOString() })}
             />
           </div>
         </Field>
@@ -71,7 +69,7 @@ export function TargetingFields({
           <Radio.Group
             optionType="button"
             buttonStyle="solid"
-            value={t.audience?.login ?? 'any'}
+            value={targeting.audience?.login ?? 'any'}
             onChange={(e) =>
               patch({
                 audience: e.target.value === 'any' ? undefined : { login: e.target.value },
@@ -113,15 +111,15 @@ export function TargetingFields({
             className="w-full"
             placeholder="輸入國別代碼後 Enter，如 TW、JP"
             value={source.geo ?? []}
-            onChange={(v) => setSource({ geo: v })}
+            onChange={(geo) => setSource({ geo })}
           />
         </Field>
 
         <Field label="優先序" tip="多筆同時生效時，數字越大越優先">
           <InputNumber
             className="w-28"
-            value={t.priority ?? 0}
-            onChange={(v) => patch({ priority: v ?? 0 })}
+            value={targeting.priority ?? 0}
+            onChange={(priority) => patch({ priority: priority ?? 0 })}
           />
         </Field>
       </div>
@@ -129,8 +127,10 @@ export function TargetingFields({
   )
 }
 
+type FieldProps = { label: string; tip?: string; children: ReactNode }
+
 // 垂直頂標籤:標籤(可帶 ⓘ)在上、控制項在下。複雜語意的說明收進 ⓘ tooltip。
-function Field({ label, tip, children }: { label: string; tip?: string; children: ReactNode }) {
+function Field({ label, tip, children }: FieldProps) {
   return (
     <div>
       <div className="mb-1.5 flex items-center gap-1 text-[#333]">
@@ -146,18 +146,15 @@ function Field({ label, tip, children }: { label: string; tip?: string; children
   )
 }
 
-// 一組 UTM 五欄。改動時空字串收成 undefined,空組不列入命中(見 resolve.hasUtm)。
-function UtmGroup({
-  idx,
-  rule,
-  onChange,
-  onRemove,
-}: {
+type UtmGroupProps = {
   idx: number
   rule: UtmRule
   onChange: (p: Partial<UtmRule>) => void
   onRemove: () => void
-}) {
+}
+
+// 一組 UTM 五欄。改動時空字串收成 undefined,空組不列入命中(見 resolve.hasUtm)。
+function UtmGroup({ idx, rule, onChange, onRemove }: UtmGroupProps) {
   const field = (key: keyof UtmRule, label: string, param: string) => (
     <div className="flex flex-col gap-1">
       <span className="text-sm text-[#666]">{label}</span>

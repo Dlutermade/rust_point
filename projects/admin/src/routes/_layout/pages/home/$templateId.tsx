@@ -1,22 +1,25 @@
-import { App, Button, Form, Spin } from 'antd'
+import { App, Button, Form, Space, Spin } from 'antd'
 import { CopyOutlined, SaveOutlined } from '@ant-design/icons'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { PageContainer } from '@ant-design/pro-components'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { pageTitle } from '../../../../shared/head'
 import { homeApi } from '../../../../api/home'
 import type { ChromeOverride, Targeting } from '../../../../api/types'
-import { PageFormShell } from '../../../../components/page-template/PageFormShell'
-import type { PageFormValues } from '../../../../components/page-template/PageFormShell'
-import { TargetingFields } from '../../../../components/page-template/TargetingFields'
-import { ChromePicker } from '../../../../components/page-template/ChromePicker'
+import { HomeTemplateForm } from '../../../../components/page-template/home/HomeTemplateForm'
+import type { HomeTemplateFormValues } from '../../../../components/page-template/home/HomeTemplateForm'
+import { HomeTargetingFields } from '../../../../components/page-template/home/HomeTargetingFields'
+import { HomeChromePicker } from '../../../../components/page-template/home/HomeChromePicker'
 import { StatusTag } from '../../../../components/page-template/StatusTag'
-import { buildPublishConfirm } from '../../../../components/page-template/publishConfirm'
+import { genHomePublishConfirm } from '../../../../components/page-template/home/homePublishConfirm'
 
 // /pages/home/$templateId — 編輯(草稿)或檢視(已發布,唯讀)某個首頁模板,一律走表單。
 export const Route = createFileRoute('/_layout/pages/home/$templateId')({
+  head: () => ({ meta: [{ title: pageTitle('首頁模板內容') }] }),
   component: HomeEditorPage,
 })
 
-interface HomeFormValues extends PageFormValues {
+interface HomeFormValues extends HomeTemplateFormValues {
   targeting: Targeting
   chrome: ChromeOverride
 }
@@ -25,78 +28,84 @@ function HomeEditorPage() {
   const { templateId } = Route.useParams()
   const navigate = useNavigate()
   const { message, modal } = App.useApp()
-  const qc = useQueryClient()
+  const queryClient = useQueryClient()
   const [form] = Form.useForm<HomeFormValues>()
 
-  const entity = useQuery({
-    queryKey: ['home', 'entity', templateId],
+  const templateQuery = useQuery({
+    queryKey: ['home', 'template', templateId],
     queryFn: () => homeApi.get(templateId),
   })
-  const readOnly = entity.data ? entity.data.status !== 'draft' : false
+  const isReadOnly = templateQuery.data ? templateQuery.data.status !== 'draft' : false
 
   // 訂閱表單的 chrome 欄位(單一來源;只在 chrome 變時重繪,不另存 state、不用 onValuesChange)。
   const chrome = (Form.useWatch('chrome', form) as ChromeOverride | undefined) ?? {}
 
-  const headerOpts = useQuery({
+  const headerOptionsQuery = useQuery({
     queryKey: ['home', 'header-opts'],
     queryFn: () => homeApi.headerOptions(),
   })
-  const footerOpts = useQuery({
+  const footerOptionsQuery = useQuery({
     queryKey: ['home', 'footer-opts'],
     queryFn: () => homeApi.footerOptions(),
   })
-  const header = useQuery({
+  const headerContentQuery = useQuery({
     queryKey: ['home', 'ctx-header', chrome.headerId ?? 'default'],
     queryFn: () =>
       chrome.headerId ? homeApi.layoutContent(chrome.headerId) : homeApi.activeHeader(),
   })
-  const footer = useQuery({
+  const footerContentQuery = useQuery({
     queryKey: ['home', 'ctx-footer', chrome.footerId ?? 'default'],
     queryFn: () =>
       chrome.footerId ? homeApi.layoutContent(chrome.footerId) : homeApi.activeFooter(),
   })
 
-  const saveDraft = useMutation({
+  // 送出前先轉換:只帶後端要的欄位,不把表單狀態原封不動丟過去。
+  const transferFormValuesToDraftPatch = (values: HomeFormValues) => ({
+    content: values.content,
+    targeting: values.targeting,
+    chrome: values.chrome,
+    name: values.name.trim(),
+  })
+
+  const saveDraftMutation = useMutation({
     mutationFn: (values: HomeFormValues) =>
-      homeApi.saveDraft(templateId, {
-        content: values.content,
-        targeting: values.targeting,
-        chrome: values.chrome,
-        name: values.name.trim(),
-      }),
+      homeApi.saveDraft(templateId, transferFormValuesToDraftPatch(values)),
     onSuccess: () => {
       message.success('已儲存草稿')
-      qc.invalidateQueries({ queryKey: ['home'] })
+      void queryClient.invalidateQueries({ queryKey: ['home'] })
     },
   })
-  const publish = useMutation({
+  const publishMutation = useMutation({
     mutationFn: async (values: HomeFormValues) => {
-      await homeApi.saveDraft(templateId, {
-        content: values.content,
-        targeting: values.targeting,
-        chrome: values.chrome,
-        name: values.name.trim(),
-      })
+      await homeApi.saveDraft(templateId, transferFormValuesToDraftPatch(values))
       await homeApi.publish(templateId, {})
     },
     onSuccess: () => {
       message.success('已發布')
-      qc.invalidateQueries({ queryKey: ['home'] })
+      void queryClient.invalidateQueries({ queryKey: ['home'] })
       navigate({ to: '/pages/home' })
     },
   })
-  const runDraft = () => form.validateFields().then((v) => saveDraft.mutate(v))
-  const runPublish = () =>
-    form.validateFields().then((v) => {
-      modal.confirm(
-        buildPublishConfirm(
-          { name: v.name, targeting: v.targeting, chrome: v.chrome, kind: 'page' },
-          () => publish.mutateAsync(v),
-        ),
-      )
-    })
+  // validateFields() 驗證失敗會 reject —— 用 catch 收掉,antd 已在欄位上標出錯誤。
+  const onSaveDraft = async () => {
+    const values = await form.validateFields().catch(() => null)
+    if (!values) return
+    saveDraftMutation.mutate(values)
+  }
+  const onPublish = async () => {
+    const values = await form.validateFields().catch(() => null)
+    if (!values) return
+    modal.confirm(
+      genHomePublishConfirm(
+        { name: values.name, targeting: values.targeting, chrome: values.chrome },
+        () => publishMutation.mutateAsync(values),
+      ),
+    )
+  }
 
-  if (entity.isLoading) {
+  const templateName = templateQuery.data?.name ?? '首頁'
+
+  if (templateQuery.isLoading) {
     return (
       <div className="p-16 text-center">
         <Spin />
@@ -107,39 +116,32 @@ function HomeEditorPage() {
   const extra = (
     <>
       <Form.Item name="targeting" label="生效設定">
-        <TargetingFields readOnly={readOnly} />
+        <HomeTargetingFields readOnly={isReadOnly} />
       </Form.Item>
       <Form.Item name="chrome" label="頁面外框（不選 = 站台預設）">
-        <ChromePicker
-          headerOptions={headerOpts.data ?? []}
-          footerOptions={footerOpts.data ?? []}
+        <HomeChromePicker
+          headerOptions={headerOptionsQuery.data ?? []}
+          footerOptions={footerOptionsQuery.data ?? []}
           loadContent={homeApi.layoutContent}
-          readOnly={readOnly}
+          readOnly={isReadOnly}
         />
       </Form.Item>
     </>
   )
 
   return (
-    <PageFormShell
-      heading={entity.data?.name ?? '首頁'}
-      statusTag={entity.data ? <StatusTag v={entity.data} /> : undefined}
-      form={form}
-      initialValues={{
-        name: entity.data?.name ?? '',
-        targeting: entity.data?.targeting ?? {},
-        chrome: entity.data?.chrome ?? {},
-        content: entity.data?.content ?? [],
+    <PageContainer
+      header={{
+        title: (
+          <Space>
+            {templateName}
+            {templateQuery.data ? <StatusTag template={templateQuery.data} /> : undefined}
+          </Space>
+        ),
+        onBack: () => navigate({ to: '/pages/home' }),
       }}
-      readOnly={readOnly}
-      extraFields={extra}
-      editorTitle={entity.data?.name ?? '首頁'}
-      previewId={templateId}
-      contextHeader={header.data}
-      contextFooter={footer.data}
-      onBackToList={() => navigate({ to: '/pages/home' })}
-      footerActions={
-        readOnly
+      footer={
+        isReadOnly
           ? [
               <Button
                 key="dup"
@@ -151,20 +153,36 @@ function HomeEditorPage() {
               </Button>,
             ]
           : [
-              <Button key="draft" loading={saveDraft.isPending} onClick={runDraft}>
+              <Button key="draft" loading={saveDraftMutation.isPending} onClick={onSaveDraft}>
                 儲存草稿
               </Button>,
               <Button
                 key="pub"
                 type="primary"
                 icon={<SaveOutlined />}
-                loading={publish.isPending}
-                onClick={runPublish}
+                loading={publishMutation.isPending}
+                onClick={onPublish}
               >
                 發布
               </Button>,
             ]
       }
-    />
+    >
+      <HomeTemplateForm
+        form={form}
+        initialValues={{
+          name: templateQuery.data?.name ?? '',
+          targeting: templateQuery.data?.targeting ?? {},
+          chrome: templateQuery.data?.chrome ?? {},
+          content: templateQuery.data?.content ?? [],
+        }}
+        readOnly={isReadOnly}
+        extraFields={extra}
+        editorTitle={templateName}
+        previewId={templateId}
+        contextHeader={headerContentQuery.data}
+        contextFooter={footerContentQuery.data}
+      />
+    </PageContainer>
   )
 }
