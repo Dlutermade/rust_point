@@ -8,7 +8,11 @@
       "plugins": ["react"],
       "rules": {
         "react/rules-of-hooks": "error",
-        "react/only-export-components": ["warn", { "allowConstantExport": true }]
+        // 關掉:這條規則守的是 Vite fast refresh 的粒度,而 admin 的三種主要檔案
+        // 型態天生違反它 —— TanStack route 檔必須 export Route(非元件)、
+        // publishConfirm 是 gen* 工廠 + Modal 內容、preview/main.tsx 是掛載入口。
+        // 全部都是結構性的,不是可修的問題;留著只會讓 lint 輸出永遠不乾淨。
+        "react/only-export-components": "off"
       }
     }
   ]

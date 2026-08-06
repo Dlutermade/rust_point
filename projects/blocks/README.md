@@ -6,11 +6,11 @@
 
 ## 區塊型別
 
-版面 / 疊層是組合原語 —— banner、header、footer 都用這些自己組,不做成獨立型別。
+容器 / 疊層是組合原語 —— banner、header、footer 都用這些自己組,不做成獨立型別。
 
 | 型別 | 用途 |
 |------|------|
-| `container` / `stack` | 版面與疊層(可容納子區塊) |
+| `container` / `stack` | 容器與疊層(可容納子區塊) |
 | `heading` / `text` | 文字 |
 | `button` / `icon` | 互動與圖示 |
 | `image` | 圖片 |

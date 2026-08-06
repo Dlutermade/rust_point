@@ -11,7 +11,8 @@
 | Component 資料夾 | PascalCase + `index.tsx` 作入口 | `notification/Line/index.tsx` |
 | Hooks | camelCase,`use` 開頭 | `useAudience.ts` |
 | Utils / Helpers | camelCase | `formatDate.ts`、`apiClient.ts` |
-| 分類資料夾 | camelCase | `components/`、`hooks/`、`utils/`、`modules/` |
+| 分類資料夾 | kebab-case | `components/`、`hooks/`、`utils/` |
+| 模組資料夾 | kebab-case,多字用連字號 | `page-template/`、`block-editor/` |
 | 常數檔 | camelCase | `constants.ts`、`config.ts` |
 
 ## 2. Component 命名
@@ -20,6 +21,8 @@
 
 - **展示型** = `{主體}{呈現方式}` —— `OrderCard`、`OrderList`
 - **功能型** = `{主體/狀態}{功能}{呈現方式}` —— `OrderSearchBlock`、`SmartRadioCard`
+
+**通用後綴**(CRUD / 表單型後台)
 
 | 類型 | 後綴 | 範例 |
 |------|------|------|
@@ -31,6 +34,22 @@
 | 清單 | `~List` | `OrderList` |
 | 卡片 | `~Card` | `OrderCard` |
 | 網格 | `~Grid` | `ProductGrid` |
+
+**編輯器後綴**(視覺編輯器情境;2026-08-06 擴充)
+
+| 類型 | 後綴 | 範例 |
+|------|------|------|
+| 可編輯區 | `~Editor` | `BlockTreeEditor` |
+| 畫布 / 預覽區 | `~Canvas` | `PreviewCanvas` |
+| 側邊設定區 | `~Panel` | `SettingsPanel` |
+| 浮在內容上的層 | `~Overlay` | `SelectionOverlay` |
+| 唯讀呈現 | `~View` | `BlockView` |
+| 側滑面板 | `~Drawer` | `AuditDrawer` |
+| 狀態標籤 | `~Tag` / `~Tags` | `StatusTag`、`HomeTargetingTags` |
+| 表單欄位群 | `~Field` / `~Fields` | `ContentField`、`HomeTargetingFields` |
+| 選擇器 | `~Picker` | `HomeChromePicker` |
+
+**清單是封閉的** —— 不可隨手發明新後綴;要加就改這份文件(連理由一起寫)。這是後綴制度有效的前提:清單能無限擴充就等於沒有清單。
 
 **要避開的**
 
@@ -196,13 +215,15 @@ function CampaignForm({ onCreateCampaign: propsOnCreateCampaign }) {
 
 導入時盤點的結果,尚未全部收斂。
 
-**待決**
+**待決** —— 目前無;原有兩項已於 2026-08-06 定案,見下。
 
-| # | 事項 |
-|---|------|
-| 1 | 多字模組資料夾大小寫。規範寫 camelCase 但沒有多字範例;現況是 kebab-case(`components/page-template/`、`components/block-editor/`) |
-| 2 | Component 後綴清單不夠用。編輯器那批(`BlockTreeEditor`、`PreviewCanvas`、`SelectionOverlay`、`SettingsPanel`、`ContentField`、`BlockView`)沒有一個套得進現有八個後綴 —— 要擴充清單還是硬套 |
 ### 已定案
+
+**多字模組資料夾用 kebab-case**(2026-08-06)。規範原本寫 camelCase 卻沒給多字範例,現況 `page-template/` / `block-editor/` 是 kebab-case —— 決定以現況為準,規範跟著改(見 §1)。資料夾名會出現在 import 路徑與檔案系統裡,連字號在兩者都比駝峰好認(而且部分檔案系統大小寫不敏感,駝峰在跨平台 git 上會出事)。
+
+**Component 後綴清單擴充成兩組**(2026-08-06)。原本 8 個後綴是 CRUD 後台的詞彙(Form / Table / List / Card / Grid),而 admin 有一個**視覺編輯器** —— 那是不同類型的 UI,需要不同詞彙不是例外而是常態。硬套的後果是 `PreviewCanvas` → `PreviewBlock`、`SettingsPanel` → `SettingsBlock`、`SelectionOverlay` → `SelectionBlock`,三個都叫 Block **反而失去區辨力**,正好撞上 §2 自己要避開的「命名不明確」。§2 的目的是「名稱要說出是什麼 + 長什麼樣」,`PreviewCanvas` 已經達到,改掉是為了合清單而犧牲目的。
+
+實際卡住的是 11 個元件不是 9 個 —— `ContentField` 的 `Field` 和 `HomeChromePicker` 的 `Picker` 原本也不在清單裡。擴充後 admin 現有元件全部合規,零改名。
 
 **`components/ui/` 放跨領域 UI 原語**(2026-08-06)。`components/` 底下原本只有 `page-template/`、`block-editor/` 兩個**領域**模組,不屬於任何領域的小元件無處可放 —— `Kbd`(鍵盤按鍵樣式)因此寄生在 `routes/_layout/helps/page-editor.tsx` 裡,是 13 個 route 檔中唯一一個「route 檔內另外定義元件」的例外。已移到 `components/ui/Kbd.tsx`。
 
@@ -212,7 +233,7 @@ route 檔只放 route 元件本身;要在頁面裡拆小元件,就放進 `compon
 
 admin 已是 antd 6 + pro-components,`ProTable` / `ProForm` / `ProLayout` 扛主要工作而 shadcn 沒有對應物 —— 引入是「加第二套設計系統」不是取代。代價:第三套 token(這個 repo 才剛修完 antd token 與 Tailwind body 的字級不一致)、自己維護元件卻仍鎖著 antd(shadcn 的賣點被抵銷)。前台 `projects/blocks` 是 Lit web components(framework-free,配 Rust SSR),shadcn 是 React-only 也幫不上。
 
-要「小原語自己掌控」不需要新相依 —— Tailwind 已在,`components/ui/` 就是那個位置(見待決 3)。
+要「小原語自己掌控」不需要新相依 —— Tailwind 已在,`components/ui/` 就是那個位置(見上方已定案)。
 
 **已修正**(2026-08-06)
 
@@ -220,10 +241,10 @@ admin 已是 antd 6 + pro-components,`ProTable` / `ProForm` / `ProLayout` 扛主
 
 **仍待處理**
 
-- **lodash 裝了完全沒用**:`lodash-es` 在 dependencies,`src` 零個 import —— 要嘛開始用要嘛移除
+- **lodash 裝了完全沒用**:`lodash-es` 在 dependencies,`src` 零個 import。**2026-08-06 決定:留著並開始用**(§8 本來就要求優先用 lodash)—— 待逐處替換手刻的取值 / 分組 / 深拷貝 / debounce
 - **props 超過三層**:`route → TemplateForm → ContentField → BlockTreeEditor → PreviewCanvas → SelectionOverlay`,五到六層
 - 超過 200 行未加區塊註解:`BlockList`(393)、`BlockTreeEditor`(374)、`SettingsPanel`(357)、`HomeChromePicker`(302)、`SelectionOverlay`(273)、`PreviewCanvas`(213)
-- 元件名待後綴清單定案(見待決 2)
+- ~~元件名待後綴清單定案~~ —— 已定案,清單擴充成兩組,現有元件零改名
 
 ## 11. components 的分層
 

@@ -10,7 +10,7 @@ import { iconType } from '../blocks/content/icon'
 import { spacerType } from '../blocks/separator/spacer'
 import { dividerType } from '../blocks/separator/divider'
 
-// 版面 / 疊層是組合原語;banner / header / footer 都用它們自己組。
+// 容器 / 疊層是組合原語;banner / header / footer 都用它們自己組。
 // 順序 = 編輯器區塊面板的排列順序。
 export const blockTypes: BlockType[] = [
   containerType,

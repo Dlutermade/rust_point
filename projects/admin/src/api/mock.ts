@@ -287,7 +287,7 @@ const seedContent: Record<string, BlockInstance[]> = {
     },
     { id: 'b2', type: 'text', data: { text: '歡迎光臨,精選好物等你發現。', align: 'center' } },
   ],
-  // 頁首 = 版面 Flex(水平、兩端對齊)組出來:左 Logo、中 選單、右 動作。可自由重排。
+  // 頁首 = 容器(水平、兩端對齊)組出來:左 Logo、中 選單、右 動作。可自由重排。
   't-hdr-1': [
     {
       id: 'hdr',
@@ -344,7 +344,7 @@ const seedContent: Record<string, BlockInstance[]> = {
       ],
     },
   ],
-  // 頁尾 = 版面 Flex(垂直、置中)組出來:連結列 + 版權。
+  // 頁尾 = 容器(垂直、置中)組出來:連結列 + 版權。
   't-ftr-1': [
     {
       id: 'ftr',

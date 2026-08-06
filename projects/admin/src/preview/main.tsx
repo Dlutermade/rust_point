@@ -41,7 +41,7 @@ function Preview() {
     return () => {
       alive = false
     }
-  }, [templateId])
+  }, [templateId, isPreview])
 
   useEffect(() => {
     setContext({ tenantId: 'preview', pageType: 'home', templateVariant: templateId })

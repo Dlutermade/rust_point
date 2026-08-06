@@ -45,8 +45,8 @@ function shadowRgba(hex: string, alpha: number): string {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
-// 彈性版面(auto-layout):方向可水平可垂直 + 主軸/交叉軸對齊 + X/Y 間距/內距。
-// 加了圓角/陰影/邊框 → 任何版面都能當「卡片」。
+// 容器(auto-layout):方向可水平可垂直 + 主軸/交叉軸對齊 + X/Y 間距/內距。
+// 加了圓角/陰影/邊框 → 任何容器都能當「卡片」。
 @customElement('sf-container')
 export class SfContainer extends SfBlockElement {
   protected blockType = 'container'
@@ -100,7 +100,7 @@ export class SfContainer extends SfBlockElement {
 
 export const containerType: BlockType = {
   type: 'container',
-  name: '版面 Flex',
+  name: '容器',
   tag: 'sf-container',
   container: true,
   schema: {
