@@ -7,9 +7,9 @@ import { DownOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-desi
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { pageTitle } from '../../../../shared/head'
-import { homeApi } from '../../../../api/home'
-import { resolveTemplate } from '../../../../api/resolve'
-import type { PageTemplate } from '../../../../api/types'
+import { homePageApi } from '../../../../service/storefront/home-page'
+import { resolveHomePage } from '../../../../service/storefront/home-page'
+import type { HomePageTemplate } from '../../../../service/storefront/home-page'
 import { AuditDrawer } from '../../../../components/page-template/AuditDrawer'
 import { StatusTag } from '../../../../components/page-template/StatusTag'
 import { HomeTargetingTags } from '../../../../components/page-template/home/HomeTargetingTags'
@@ -28,22 +28,22 @@ function HomeListPage() {
   // 優先序調整(已發布唯一可就地調的槓桿;草稿的優先序在表單裡改)。
   const [editingPriority, setEditingPriority] = useState<{ id: string; value: number } | null>(null)
 
-  const listQuery = useQuery({ queryKey: ['home', 'list'], queryFn: () => homeApi.list() })
+  const listQuery = useQuery({ queryKey: ['home', 'list'], queryFn: () => homePageApi.list() })
   const invalidateList = () => queryClient.invalidateQueries({ queryKey: ['home'] })
   // 「現在生效」預覽:訪客視角(guest)。
   const liveId = listQuery.data
-    ? resolveTemplate(listQuery.data, { now: new Date(), loggedIn: false })?.id
+    ? resolveHomePage(listQuery.data, { now: new Date(), loggedIn: false })?.id
     : undefined
 
   const publishMutation = useMutation({
-    mutationFn: (id: string) => homeApi.publish(id, {}),
+    mutationFn: (id: string) => homePageApi.publish(id, {}),
     onSuccess: () => {
       message.success('已發布')
       void invalidateList()
     },
   })
   const setPriorityMutation = useMutation({
-    mutationFn: (a: { id: string; p: number }) => homeApi.updatePriority(a.id, a.p),
+    mutationFn: (a: { id: string; p: number }) => homePageApi.updatePriority(a.id, a.p),
     onSuccess: () => {
       message.success('已更新優先序')
       setEditingPriority(null)
@@ -51,28 +51,28 @@ function HomeListPage() {
     },
   })
   const pauseMutation = useMutation({
-    mutationFn: (id: string) => homeApi.pause(id),
+    mutationFn: (id: string) => homePageApi.pause(id),
     onSuccess: () => {
       message.success('已暫停')
       void invalidateList()
     },
   })
   const resumeMutation = useMutation({
-    mutationFn: (id: string) => homeApi.resume(id),
+    mutationFn: (id: string) => homePageApi.resume(id),
     onSuccess: () => {
       message.success('已恢復')
       void invalidateList()
     },
   })
   const removeMutation = useMutation({
-    mutationFn: (id: string) => homeApi.remove(id),
+    mutationFn: (id: string) => homePageApi.remove(id),
     onSuccess: () => {
       message.success('已刪除')
       void invalidateList()
     },
   })
 
-  const genMoreItems = (template: PageTemplate): MenuProps['items'] =>
+  const genMoreItems = (template: HomePageTemplate): MenuProps['items'] =>
     [
       template.status === 'draft' && {
         key: 'publish',
@@ -83,7 +83,7 @@ function HomeListPage() {
       template.status !== 'draft' && {
         key: 'toggle',
         label: template.status === 'active' ? '暫停' : '恢復生效',
-        disabled: template.isDefault,
+        disabled: template.isFallback,
         onClick: () =>
           template.status === 'active'
             ? pauseMutation.mutate(template.id)
@@ -101,9 +101,9 @@ function HomeListPage() {
         onClick: () => navigate({ to: '/pages/home/new', search: { from: template.id } }),
       },
       { key: 'audit', label: '異動紀錄', onClick: () => setAuditingTemplateId(template.id) },
-      !template.isDefault &&
+      !template.isFallback &&
         template.status !== 'active' && { type: 'divider' as const, key: 'd1' },
-      !template.isDefault &&
+      !template.isFallback &&
         template.status !== 'active' && {
           key: 'del',
           label: '刪除',
@@ -119,14 +119,14 @@ function HomeListPage() {
         },
     ].filter(Boolean) as MenuProps['items']
 
-  const columns: ProColumns<PageTemplate>[] = [
+  const columns: ProColumns<HomePageTemplate>[] = [
     {
       title: '名稱',
       dataIndex: 'name',
       render: (_, template) => (
         <Space>
           {template.name}
-          {template.isDefault && <Tag color="blue">常態版</Tag>}
+          {template.isFallback && <Tag color="blue">常態版</Tag>}
           {template.id === liveId && <Tag color="green">● 現在生效</Tag>}
         </Space>
       ),
@@ -135,7 +135,7 @@ function HomeListPage() {
       title: '狀態',
       dataIndex: 'status',
       width: 140,
-      render: (_, template) => <StatusTag template={template} />,
+      render: (_, template) => <StatusTag status={template.status} />,
     },
     {
       title: '生效條件',
@@ -177,7 +177,7 @@ function HomeListPage() {
 
   return (
     <PageContainer>
-      <ProTable<PageTemplate>
+      <ProTable<HomePageTemplate>
         headerTitle="首頁模板"
         rowKey="id"
         search={false}
@@ -226,7 +226,7 @@ function HomeListPage() {
       <AuditDrawer
         isOpened={!!auditingTemplateId}
         templateId={auditingTemplateId}
-        loadEntries={homeApi.audit}
+        loadEntries={homePageApi.audit}
         onCloseDrawer={() => setAuditingTemplateId(null)}
       />
     </PageContainer>

@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { Button, Space, Tag } from 'antd'
 import { EditOutlined, EyeOutlined } from '@ant-design/icons'
-import type { BlockInstance } from '../../api/types'
+import type { BlockInstance } from '../../service/storefront/shared/types'
 import { BlockTreeEditor } from './BlockTreeEditor'
 import { BlockView } from './BlockView'
 import { writePreviewScratch } from '../../preview/scratch'
@@ -34,9 +34,11 @@ export function ContentField({
   const blocks = value ?? []
 
   // 預覽(全尺寸):把 blocks 丟進 client 暫存、開新分頁看——不碰 server。
+  // 帶 kind:三種模板各自一張表、id 各自獨立,預覽頁單憑 id 認不出該打哪組 API。
   const openPreview = (bs: BlockInstance[]) => {
     writePreviewScratch(bs)
-    window.open(`/preview.html?template=${previewId}&preview=1`, '_blank', 'noopener')
+    const kind = frame === 'header' || frame === 'footer' ? frame : 'home'
+    window.open(`/preview.html?template=${previewId}&kind=${kind}&preview=1`, '_blank', 'noopener')
   }
 
   const count = blocks.length

@@ -5,6 +5,14 @@ import type { BlockType } from '../../contract'
 import { SfBlockElement } from '../../core/block-element'
 
 export interface DividerData {
+  /**
+   * 方向**不分裝置** —— 但這不是缺口:`auto` 是依父容器軸決定的,
+   * 而父容器的 `direction` 可分裝置。所以「電腦橫排、手機直排」時,
+   * auto 的分隔線本來就會跟著轉向,不需要自己再存兩份。
+   *
+   * 另外它也不是單純的 CSS 值切換:會設 host 的 orient 屬性、切換 width/height 的組合,
+   * 沒辦法只靠一個 CSS 變數表達。
+   */
   orientation?: 'auto' | 'horizontal' | 'vertical'
   thickness?: number
   color?: string

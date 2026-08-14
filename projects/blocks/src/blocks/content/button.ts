@@ -1,16 +1,18 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import { customElement } from '../../core/register-element'
-import type { BlockAction, BlockType } from '../../contract'
-import { actionHref } from '../../contract'
+import type { BlockAction, BlockType, MaybePerDevice } from '../../contract'
+import { actionHref, genDeviceVars } from '../../contract'
 import { SfBlockElement } from '../../core/block-element'
 import { SF_EVENTS } from '../../events'
 import { resetStyles } from '../../styles/reset'
+import { mobileQuery } from '../../styles/device'
 
 export interface ButtonData {
   text?: string
   action?: BlockAction
-  align?: 'left' | 'center' | 'right'
+  align?: MaybePerDevice<'left' | 'center' | 'right'>
+  /** 樣式不分裝置 —— 兩個裝置長得不一樣的按鈕是 bug。 */
   variant?: 'primary' | 'outline'
 }
 
@@ -27,6 +29,12 @@ export class SfButton extends SfBlockElement {
     }
     .wrap {
       padding: 8px 0;
+      text-align: var(--sf-align);
+    }
+    ${mobileQuery} {
+      .wrap {
+        text-align: var(--sf-align-m, var(--sf-align));
+      }
     }
     .btn {
       display: inline-block;
@@ -56,7 +64,8 @@ export class SfButton extends SfBlockElement {
     const el = href
       ? html`<a class=${cls} href=${href} @click=${this._nav}>${inner}</a>`
       : html`<button class=${cls} type="button" @click=${this._act}>${inner}</button>`
-    return html`<div class="wrap" style="text-align:${d.align ?? 'left'}">${el}</div>`
+    const vars = genDeviceVars(d, (dd) => ({ align: dd.align ?? 'left' }))
+    return html`<div class="wrap" style=${vars}>${el}</div>`
   }
 
   private _nav() {
@@ -91,6 +100,7 @@ export const buttonType: BlockType = {
         key: 'align',
         label: '對齊',
         type: 'select',
+        perDevice: true,
         options: [
           { label: '靠左', value: 'left' },
           { label: '置中', value: 'center' },

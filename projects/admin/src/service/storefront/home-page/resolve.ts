@@ -1,6 +1,12 @@
-import type { PageTemplate, Targeting, UtmRule } from './types'
+import type { HomePageTemplate, Targeting, UtmRule } from './types'
 
-// 解析輸入:現在時間 + 訪客是誰 + 從哪來。v1 後台預覽只用 now + loggedIn(訪客視角)。
+// 解析:同一站多份首頁模板,依「現在時間 + 訪客是誰 + 從哪來」算出當下該呈現哪一份。
+// 純函式 —— 同輸入必得同一份 → 可快取。
+//
+// 這裡只有首頁模板的解析。頁首 / 頁尾不跑這套(它們只有站台預設),
+// 後端直接提供 `/headers/site-default-content` 端點,前端不必自己算。
+
+// 解析輸入:v1 後台預覽只用 now + loggedIn(訪客視角)。
 // utm 是這次到訪帶的實際 UTM 參數(五欄),拿來跟模板設的 UtmRule 比對。
 export interface ResolveCtx {
   now: Date
@@ -58,25 +64,22 @@ function specificity(t?: Targeting): number {
   return n
 }
 
-// 外框(頁首 / 頁尾)不跑完整 targeting(見 docs business/09 Model B):
-// 頁首/頁尾是全站外框,只有「站台預設」概念 —— 取被標為預設的那個 active 模板,沒有就取第一個 active。
-export function resolveChrome(templates: PageTemplate[]): PageTemplate | undefined {
-  const active = templates.filter((template) => template.status === 'active')
-  return active.find((template) => template.isDefault) ?? active[0]
-}
-
-// 頁面(首頁…)才跑完整生效:FILTER(status ∧ 時間 ∧ 受眾 ∧ 來源)→ SORT(priority → specificity → 常態墊底)。
-// 純函式:同輸入必得同一個模板 → 可快取。常態版(isDefault、無條件、priority 最低)永遠合格排最後 → 兜底免特判。
-export function resolveTemplate(
-  templates: PageTemplate[],
+/**
+ * FILTER(status ∧ 時間 ∧ 受眾 ∧ 來源)→ SORT(priority → specificity → 常態墊底)。
+ *
+ * 常態版(isFallback、無條件、priority 最低)永遠合格且排最後 → 兜底免特判,
+ * 所以這個函式在有資料時**永遠有解**。
+ */
+export function resolveHomePage(
+  templates: HomePageTemplate[],
   ctx: ResolveCtx,
-): PageTemplate | undefined {
+): HomePageTemplate | undefined {
   const candidates = templates.filter(
-    (v) =>
-      v.status === 'active' &&
-      inSchedule(v.targeting?.schedule, ctx.now) &&
-      inAudience(v.targeting?.audience, ctx) &&
-      inSource(v.targeting?.source, ctx),
+    (t) =>
+      t.status === 'active' &&
+      inSchedule(t.targeting?.schedule, ctx.now) &&
+      inAudience(t.targeting?.audience, ctx) &&
+      inSource(t.targeting?.source, ctx),
   )
   return candidates.slice().sort((a, b) => {
     const pa = a.targeting?.priority ?? 0
@@ -85,6 +88,6 @@ export function resolveTemplate(
     const sa = specificity(a.targeting)
     const sb = specificity(b.targeting)
     if (sb !== sa) return sb - sa
-    return (a.isDefault ? 1 : 0) - (b.isDefault ? 1 : 0)
+    return (a.isFallback ? 1 : 0) - (b.isFallback ? 1 : 0)
   })[0]
 }

@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import type { DragEvent, ReactNode } from 'react'
-import { consoleSink, installEventRouter, setContext } from '@sc/blocks'
-import type { BlockInstance } from '../../api/types'
+import { VIEWPORT_CONTAINER, consoleSink, installEventRouter, setContext } from '@sc/blocks'
+import type { BlockInstance } from '../../service/storefront/shared/types'
 import { BlockView } from './BlockView'
 import { SelectionOverlay } from './SelectionOverlay'
 
-const STATIC_CSS = `.sf-canvas [data-block-id] { cursor: pointer; }`
+// 畫布宣告具名容器 —— 分裝置的區塊靠 @container 查它的寬度,而不是瀏覽器 viewport。
+// 具名是必要的:不具名的話,巢狀區塊會查到最近的容器祖先(它的父區塊)而不是畫布。
+// 切「手機」只是把畫布縮成 390px,查詢就跟著生效,不必 iframe、不必重新渲染。
+const STATIC_CSS =
+  `.sf-canvas { container-type: inline-size; container-name: ${VIEWPORT_CONTAINER}; }` +
+  `.sf-canvas [data-block-id] { cursor: pointer; }`
 
 type ContextBandProps = { label: string; children: ReactNode }
 
@@ -43,7 +48,7 @@ type PreviewCanvasProps = {
   onSelectParent: () => void
   onReorderBefore: (id: string, beforeId: string | null) => void
   device: 'desktop' | 'mobile'
-  variant: string
+  templateId: string
   header?: BlockInstance[]
   footer?: BlockInstance[]
   frame?: 'page' | 'header' | 'footer'
@@ -63,7 +68,7 @@ export function PreviewCanvas({
   onSelectParent,
   onReorderBefore,
   device,
-  variant,
+  templateId,
   header,
   footer,
   frame = 'page',
@@ -77,10 +82,10 @@ export function PreviewCanvas({
   const [dropTarget, setDropTarget] = useState<string | null>(null)
 
   useEffect(() => {
-    setContext({ tenantId: 'preview', pageType: 'home', templateVariant: variant })
+    setContext({ tenantId: 'preview', pageType: 'home', templateId })
     const uninstall = installEventRouter(document, { sinks: [consoleSink] })
     return uninstall
-  }, [variant])
+  }, [templateId])
 
   useEffect(() => {
     const el = canvasRef.current

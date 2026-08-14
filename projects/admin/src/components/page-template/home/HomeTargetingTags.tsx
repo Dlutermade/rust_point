@@ -1,13 +1,13 @@
 import { Space, Tag } from 'antd'
 import { ClockCircleOutlined, GlobalOutlined, UserOutlined } from '@ant-design/icons'
-import type { PageTemplate } from '../../../api/types'
-import { hasUtm } from '../../../api/resolve'
+import { hasUtm } from '../../../service/storefront/home-page'
+import type { HomePageTemplate } from '../../../service/storefront/home-page'
 
 // 生效條件:用小 Tag 呈現「什麼時候、給誰、從哪來」。
 // 沒條件時也走 Tag(淡色)—— 純文字沒有外框內距,和有條件的列擺在一起列高會跳。
 const genMonthDayLabel = (iso?: string) => (iso ? iso.slice(5, 10).replace('-', '/') : '')
 
-type HomeTargetingTagsProps = { template: PageTemplate }
+type HomeTargetingTagsProps = { template: HomePageTemplate }
 
 export function HomeTargetingTags({ template }: HomeTargetingTagsProps) {
   const targeting = template.targeting

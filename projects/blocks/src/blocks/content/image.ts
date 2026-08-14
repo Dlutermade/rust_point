@@ -1,16 +1,18 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import { customElement } from '../../core/register-element'
-import type { BlockAction, BlockType } from '../../contract'
-import { actionHref } from '../../contract'
+import type { BlockAction, BlockType, MaybePerDevice } from '../../contract'
+import { actionHref, genDeviceVars } from '../../contract'
 import { SfBlockElement } from '../../core/block-element'
 import { SF_EVENTS } from '../../events'
 import { resetStyles } from '../../styles/reset'
+import { mobileQuery } from '../../styles/device'
 
 export interface ImageData {
+  /** 圖檔不分裝置 —— 要兩個裝置換不同圖,做法是放兩個圖片區塊各自設顯示裝置。 */
   src?: string
   alt?: string
-  fit?: 'cover' | 'contain'
+  fit?: MaybePerDevice<'cover' | 'contain'>
   overlay?: number // 暗色遮罩 % 0-70(圖片自己管,疊在圖上讓上層文字好讀)
   action?: BlockAction
 }
@@ -35,6 +37,12 @@ export class SfImage extends SfBlockElement {
       display: block;
       width: 100%;
       height: 100%;
+      object-fit: var(--sf-fit);
+    }
+    ${mobileQuery} {
+      img {
+        object-fit: var(--sf-fit-m, var(--sf-fit));
+      }
     }
     .scrim {
       position: absolute;
@@ -55,10 +63,10 @@ export class SfImage extends SfBlockElement {
   render() {
     const d = this.data
     const src = d.src || 'https://picsum.photos/seed/sf-image/800/520'
-    const fit = d.fit ?? 'cover'
+    const vars = genDeviceVars(d, (dd) => ({ fit: dd.fit ?? 'cover' }))
     const ov = d.overlay ?? 0
-    const media = html`<div class="wrap">
-      <img src="${src}" alt="${d.alt ?? ''}" style="object-fit:${fit}" />
+    const media = html`<div class="wrap" style=${vars}>
+      <img src="${src}" alt="${d.alt ?? ''}" />
       ${ov > 0 ? html`<div class="scrim" style="background:rgba(0,0,0,${ov / 100})"></div>` : null}
     </div>`
 
@@ -95,6 +103,7 @@ export const imageType: BlockType = {
         key: 'fit',
         label: '裁切',
         type: 'select',
+        perDevice: true,
         options: [
           { label: '填滿裁切 cover', value: 'cover' },
           { label: '完整顯示 contain', value: 'contain' },

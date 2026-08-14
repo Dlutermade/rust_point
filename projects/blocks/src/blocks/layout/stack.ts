@@ -1,15 +1,17 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import { customElement } from '../../core/register-element'
-import type { BlockType, Spacing } from '../../contract'
-import { toSpacing } from '../../contract'
+import type { BlockType, MaybePerDevice, Spacing } from '../../contract'
+import { genDeviceVars, toSpacing } from '../../contract'
 import { SfBlockElement } from '../../core/block-element'
 import { resetStyles } from '../../styles/reset'
+import { mobileQuery } from '../../styles/device'
 
 export interface StackData {
+  /** 背景色不分裝置 —— 品牌樣式兩邊不一致是 bug。 */
   bgColor?: string
-  minHeight?: number
-  padding?: number | Spacing
+  minHeight?: MaybePerDevice<number>
+  padding?: MaybePerDevice<number | Spacing>
 }
 
 // 疊層:純堆疊容器。子區塊「同格」疊放,**自然順序決定上下(後者在上),不管 z-index**。
@@ -31,6 +33,14 @@ export class SfStack extends SfBlockElement {
       position: relative;
       box-sizing: border-box;
       overflow: hidden;
+      min-height: var(--sf-min-h);
+      padding: var(--sf-pad);
+    }
+    ${mobileQuery} {
+      .stack {
+        min-height: var(--sf-min-h-m, var(--sf-min-h));
+        padding: var(--sf-pad-m, var(--sf-pad));
+      }
     }
     ::slotted(*) {
       position: absolute;
@@ -39,14 +49,14 @@ export class SfStack extends SfBlockElement {
 
   render() {
     const d = this.data
-    const pad = toSpacing(d.padding, 0)
-    const style = [
-      `min-height:${d.minHeight ?? 320}px`,
-      `padding:${pad.y}px ${pad.x}px`,
-      d.bgColor ? `background:${d.bgColor}` : '',
-    ]
-      .filter(Boolean)
-      .join(';')
+    const vars = genDeviceVars(d, (dd) => {
+      const pad = toSpacing(dd.padding, 0)
+      return {
+        'min-h': `${dd.minHeight ?? 320}px`,
+        pad: `${pad.y}px ${pad.x}px`,
+      }
+    })
+    const style = [vars, d.bgColor ? `background:${d.bgColor}` : ''].filter(Boolean).join(';')
     return html`<div class="stack" style=${style}><slot></slot></div>`
   }
 }
@@ -58,8 +68,24 @@ export const stackType: BlockType = {
   container: true,
   schema: {
     fields: [
-      { key: 'minHeight', label: '高度', type: 'number', min: 80, max: 800, step: 20 },
-      { key: 'padding', label: '內距 X/Y', type: 'spacing', min: 0, max: 120, step: 4 },
+      {
+        key: 'minHeight',
+        label: '高度',
+        type: 'number',
+        min: 80,
+        max: 800,
+        step: 20,
+        perDevice: true,
+      },
+      {
+        key: 'padding',
+        label: '內距 X/Y',
+        type: 'spacing',
+        min: 0,
+        max: 120,
+        step: 4,
+        perDevice: true,
+      },
       { key: 'bgColor', label: '背景色', type: 'color' },
     ],
   },

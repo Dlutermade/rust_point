@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageContainer } from '@ant-design/pro-components'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { pageTitle } from '../../../../shared/head'
-import { headerApi } from '../../../../api/header'
+import { headerApi } from '../../../../service/storefront/header'
 import { HeaderTemplateForm } from '../../../../components/page-template/header/HeaderTemplateForm'
 import type { HeaderTemplateFormValues } from '../../../../components/page-template/header/HeaderTemplateForm'
 import { genHeaderPublishConfirm } from '../../../../components/page-template/header/headerPublishConfirm'
@@ -40,8 +40,12 @@ function HeaderNewPage() {
 
   const submitMutation = useMutation({
     mutationFn: async ({ action, values }: SubmitArgs) => {
-      const created = await headerApi.createDraft(values.name.trim())
-      await headerApi.saveDraft(created.id, { content: values.content })
+      // 一次建好(內容一併帶上),不再補一趟 save-draft。
+      const created = await headerApi.create({
+        name: values.name.trim(),
+        content: values.content,
+        copyFrom: from,
+      })
       if (action === 'publish') await headerApi.publish(created.id, {})
       return { id: created.id, action }
     },

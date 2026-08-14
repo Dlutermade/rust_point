@@ -7,14 +7,29 @@ import {
   Form,
   Input,
   InputNumber,
+  Segmented,
   Select,
   Slider,
   Switch,
+  Tag,
 } from 'antd'
 import { LinkOutlined } from '@ant-design/icons'
-import { blockTypeMap, toSpacing } from '@sc/blocks'
+import { atDevice, blockTypeMap, toSpacing, withDevice } from '@sc/blocks'
 import type { BlockField } from '@sc/blocks'
-import type { BlockInstance, BlockSize, Pos9, SizeMode } from '../../api/types'
+import type {
+  BlockInstance,
+  BlockSize,
+  Device,
+  DeviceVisibility,
+  Pos9,
+  SizeMode,
+} from '../../service/storefront/shared/types'
+
+const VISIBILITY_OPTIONS = [
+  { label: '全部裝置', value: 'all' },
+  { label: '僅電腦', value: 'desktop' },
+  { label: '僅手機', value: 'mobile' },
+]
 
 const ACTION_KINDS = [
   { label: '無', value: 'none' },
@@ -36,6 +51,9 @@ type SettingsPanelProps = {
   onChange: (data: Record<string, unknown>) => void
   onSize: (size: BlockSize) => void
   onPos: (pos: Pos9) => void
+  onVisibility: (visibility: DeviceVisibility) => void
+  /** 目前正在編哪個裝置。標了 perDevice 的欄位只讀寫這個裝置的值。 */
+  device: Device
   parentIsStack: boolean
   readOnly?: boolean
 }
@@ -45,6 +63,8 @@ export function SettingsPanel({
   onChange,
   onSize,
   onPos,
+  onVisibility,
+  device,
   parentIsStack,
   readOnly,
 }: SettingsPanelProps) {
@@ -66,11 +86,24 @@ export function SettingsPanel({
     // 唯讀:componentDisabled 一次把面板內所有 antd 欄位鎖住,客戶看得到設定值但不能改。
     <ConfigProvider componentDisabled={readOnly}>
       <div className="mb-3 font-semibold">{bt.name} 設定</div>
-      <SizeSection size={instance.size} onSize={onSize} />
+
+      {/* 顯示裝置:做結構差異(電腦橫向選單 / 手機漢堡)用。它本身在講裝置,所以不分裝置存。 */}
+      <div className="mb-4">
+        <div className="field-label mb-1.5">顯示裝置</div>
+        <Segmented
+          block
+          value={instance.visibility}
+          options={VISIBILITY_OPTIONS}
+          onChange={(v) => onVisibility(v as DeviceVisibility)}
+        />
+      </div>
+
+      {/* 尺寸 / 位置分裝置:只改目前在看的那個,另一個維持原樣。 */}
+      <SizeSection size={atDevice(instance.size, device)} onSize={onSize} />
       {parentIsStack && (
         <div className="mb-4">
           <div className="field-label mb-1.5">位置（在疊層中）</div>
-          <AlignGrid value={instance.pos} onChange={onPos} />
+          <AlignGrid value={atDevice(instance.pos, device)} onChange={onPos} />
         </div>
       )}
       {/* component={false}:只要 Form.Item 的垂直排版 + context,不渲染真的 <form>,
@@ -79,8 +112,27 @@ export function SettingsPanel({
         {bt.schema.fields
           .filter((f) => showField(f, instance.data))
           .map((f) => (
-            <Form.Item key={f.key} label={f.label}>
-              {renderControl(f, instance.data[f.key], (v) => set(f.key, v))}
+            <Form.Item
+              key={f.key}
+              label={
+                f.perDevice ? (
+                  // 標出來,否則商家不知道自己改的只是其中一個裝置。
+                  <span className="inline-flex items-center gap-1.5">
+                    {f.label}
+                    <Tag className="m-0" color="blue">
+                      {device === 'mobile' ? '手機' : '電腦'}
+                    </Tag>
+                  </span>
+                ) : (
+                  f.label
+                )
+              }
+            >
+              {renderControl(
+                f,
+                f.perDevice ? atDevice(instance.data[f.key], device) : instance.data[f.key],
+                (v) => set(f.key, f.perDevice ? withDevice(instance.data[f.key], device, v) : v),
+              )}
             </Form.Item>
           ))}
       </Form>

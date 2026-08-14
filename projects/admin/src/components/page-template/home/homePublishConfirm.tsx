@@ -1,8 +1,8 @@
 import { Descriptions } from 'antd'
 import { ExclamationCircleOutlined } from '@ant-design/icons'
 import type { ModalFuncProps } from 'antd'
-import type { ChromeOverride, Targeting, UtmRule } from '../../../api/types'
-import { hasUtm } from '../../../api/resolve'
+import { hasUtm } from '../../../service/storefront/home-page'
+import type { Targeting, UtmRule } from '../../../service/storefront/home-page'
 
 // 首頁模板的發布防呆:名稱放標題,攤開生效資訊(檔期 / 受眾 / 來源 / 優先序 / 外框)。
 // 外框(頁首 / 頁尾)沒有這些維度,各自有自己的版本。
@@ -38,8 +38,9 @@ export function sourceText(t?: Targeting): string {
   if (s?.geo?.length) parts.push(`地區 ${s.geo.join('、')}`)
   return parts.length ? parts.join('、') : '不限'
 }
-function chromeText(c?: ChromeOverride): string {
-  return `頁首 ${c?.headerId ? '指定' : '站台預設'}、頁尾 ${c?.footerId ? '指定' : '站台預設'}`
+// 外框是兩個獨立的覆寫,可以只指定其中一個 —— 所以分開講,不合併成一句。
+function chromeText(headerTemplateId?: string, footerTemplateId?: string): string {
+  return `頁首 ${headerTemplateId ? '指定' : '站台預設'}、頁尾 ${footerTemplateId ? '指定' : '站台預設'}`
 }
 
 function FreezeNote() {
@@ -57,10 +58,11 @@ function FreezeNote() {
 
 type PublishSummaryProps = {
   targeting?: Targeting
-  chrome?: ChromeOverride
+  headerTemplateId?: string
+  footerTemplateId?: string
 }
 
-function PublishSummary({ targeting, chrome }: PublishSummaryProps) {
+function PublishSummary({ targeting, headerTemplateId, footerTemplateId }: PublishSummaryProps) {
   return (
     <div className="mt-2 flex flex-col gap-4">
       <Descriptions
@@ -72,7 +74,11 @@ function PublishSummary({ targeting, chrome }: PublishSummaryProps) {
           { key: 'audience', label: '受眾', children: audienceText(targeting) },
           { key: 'source', label: '來源', children: sourceText(targeting) },
           { key: 'priority', label: '優先序', children: targeting?.priority ?? 0 },
-          { key: 'chrome', label: '頁面外框', children: chromeText(chrome) },
+          {
+            key: 'chrome',
+            label: '頁面外框',
+            children: chromeText(headerTemplateId, footerTemplateId),
+          },
         ]}
       />
       <FreezeNote />
@@ -82,14 +88,25 @@ function PublishSummary({ targeting, chrome }: PublishSummaryProps) {
 
 // gen*:從模板資料產生 antd Modal 的設定物件(衍生值,不改動輸入)。
 export function genHomePublishConfirm(
-  opts: { name: string; targeting?: Targeting; chrome?: ChromeOverride },
+  opts: {
+    name: string
+    targeting?: Targeting
+    headerTemplateId?: string
+    footerTemplateId?: string
+  },
   onOk: () => Promise<unknown> | void,
 ): ModalFuncProps {
   return {
     title: `確認發布「${opts.name || '未命名'}」?`,
     width: 460,
     icon: null,
-    content: <PublishSummary targeting={opts.targeting} chrome={opts.chrome} />,
+    content: (
+      <PublishSummary
+        targeting={opts.targeting}
+        headerTemplateId={opts.headerTemplateId}
+        footerTemplateId={opts.footerTemplateId}
+      />
+    ),
     okText: '確認發布',
     cancelText: '取消',
     onOk,

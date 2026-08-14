@@ -7,8 +7,8 @@ import { DownOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-desi
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { pageTitle } from '../../../../shared/head'
-import { footerApi } from '../../../../api/footer'
-import type { PageTemplate } from '../../../../api/types'
+import { footerApi } from '../../../../service/storefront/footer'
+import type { FooterTemplate } from '../../../../service/storefront/footer'
 import { AuditDrawer } from '../../../../components/page-template/AuditDrawer'
 import { StatusTag } from '../../../../components/page-template/StatusTag'
 
@@ -35,7 +35,7 @@ function FooterListPage() {
     },
   })
   const setDefaultMutation = useMutation({
-    mutationFn: (id: string) => footerApi.setDefault(id),
+    mutationFn: (id: string) => footerApi.setSiteDefault(id),
     onSuccess: () => {
       message.success('已設為站台預設')
       void invalidateList()
@@ -63,7 +63,7 @@ function FooterListPage() {
     },
   })
 
-  const genMoreItems = (template: PageTemplate): MenuProps['items'] =>
+  const genMoreItems = (template: FooterTemplate): MenuProps['items'] =>
     [
       template.status === 'draft' && {
         key: 'publish',
@@ -74,14 +74,14 @@ function FooterListPage() {
       template.status !== 'draft' && {
         key: 'toggle',
         label: template.status === 'active' ? '暫停' : '恢復生效',
-        disabled: template.isDefault,
+        disabled: template.isSiteDefault,
         onClick: () =>
           template.status === 'active'
             ? pauseMutation.mutate(template.id)
             : resumeMutation.mutate(template.id),
       },
       template.status === 'active' &&
-        !template.isDefault && {
+        !template.isSiteDefault && {
           key: 'default',
           label: '設為站台預設',
           onClick: () => setDefaultMutation.mutate(template.id),
@@ -92,9 +92,9 @@ function FooterListPage() {
         onClick: () => navigate({ to: '/pages/footer/new', search: { from: template.id } }),
       },
       { key: 'audit', label: '異動紀錄', onClick: () => setAuditingTemplateId(template.id) },
-      !template.isDefault &&
+      !template.isSiteDefault &&
         template.status !== 'active' && { type: 'divider' as const, key: 'd1' },
-      !template.isDefault &&
+      !template.isSiteDefault &&
         template.status !== 'active' && {
           key: 'del',
           label: '刪除',
@@ -110,14 +110,14 @@ function FooterListPage() {
         },
     ].filter(Boolean) as MenuProps['items']
 
-  const columns: ProColumns<PageTemplate>[] = [
+  const columns: ProColumns<FooterTemplate>[] = [
     {
       title: '名稱',
       dataIndex: 'name',
       render: (_, template) => (
         <Space>
           {template.name}
-          {template.isDefault && <Tag color="green">● 站台預設（生效中）</Tag>}
+          {template.isSiteDefault && <Tag color="green">● 站台預設（生效中）</Tag>}
         </Space>
       ),
     },
@@ -125,7 +125,7 @@ function FooterListPage() {
       title: '狀態',
       dataIndex: 'status',
       width: 140,
-      render: (_, template) => <StatusTag template={template} />,
+      render: (_, template) => <StatusTag status={template.status} />,
     },
     { title: '更新時間', dataIndex: 'updatedAt', width: 160 },
     {
@@ -156,7 +156,7 @@ function FooterListPage() {
 
   return (
     <PageContainer>
-      <ProTable<PageTemplate>
+      <ProTable<FooterTemplate>
         headerTitle="頁尾設定"
         rowKey="id"
         search={false}

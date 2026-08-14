@@ -11,7 +11,7 @@ import {
 } from 'antd'
 import { DeleteOutlined, PlusOutlined, QuestionCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
-import type { Targeting, UtmRule } from '../../../api/types'
+import type { Targeting, UtmRule } from '../../../service/storefront/home-page'
 
 type HomeTargetingFieldsProps = {
   value?: Targeting

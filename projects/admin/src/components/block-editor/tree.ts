@@ -1,4 +1,4 @@
-import type { BlockInstance } from '../../api/types'
+import type { BlockInstance } from '../../service/storefront/shared/types'
 
 // 區塊樹操作(遞迴,支援 container 巢狀)。
 
@@ -72,6 +72,11 @@ export function cloneWithNewIds(node: BlockInstance): BlockInstance {
     id: crypto.randomUUID().slice(0, 8),
     type: node.type,
     data: structuredClone(node.data),
+    // 尺寸 / 位置 / 顯示裝置都要跟著複製 —— 少帶任何一個,複本在畫布上就會長得不一樣。
+    size: node.size ? structuredClone(node.size) : undefined,
+    pos: node.pos ? structuredClone(node.pos) : undefined,
+    visibility: node.visibility,
+    name: node.name,
     children: node.children?.map(cloneWithNewIds),
   }
 }

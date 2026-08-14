@@ -32,7 +32,7 @@ import {
 import type { ReactNode } from 'react'
 import { ICON_LABELS, blockTypeMap, blockTypes } from '@sc/blocks'
 import type { IconName } from '@sc/blocks'
-import type { BlockInstance } from '../../api/types'
+import type { BlockInstance } from '../../service/storefront/shared/types'
 import { INDENT_WIDTH, flattenBlocks, getProjection, removeChildrenOf } from './dnd-tree'
 import type { FlatBlock, ReorderMove } from './dnd-tree'
 

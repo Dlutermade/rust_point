@@ -1,6 +1,6 @@
 import { Drawer, Empty, Timeline } from 'antd'
 import { useQuery } from '@tanstack/react-query'
-import type { AuditAction, AuditEntry } from '../../api/types'
+import type { AuditAction, AuditEntry } from '../../service/storefront/shared/types'
 
 const ACTION_LABEL: Record<AuditAction, string> = {
   create: '建立草稿',
@@ -10,7 +10,7 @@ const ACTION_LABEL: Record<AuditAction, string> = {
   priority: '調整優先序',
   pause: '暫停',
   resume: '恢復',
-  'set-default': '設為站台預設',
+  'set-site-default': '設為站台預設',
 }
 
 type AuditDrawerProps = {

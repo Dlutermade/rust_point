@@ -1,18 +1,21 @@
 import { css, html } from 'lit'
 import { property } from 'lit/decorators.js'
 import { customElement } from '../../core/register-element'
-import type { BlockType, Spacing } from '../../contract'
-import { toSpacing } from '../../contract'
+import type { BlockType, MaybePerDevice, Spacing } from '../../contract'
+import { genDeviceVars, toSpacing } from '../../contract'
 import { SfBlockElement } from '../../core/block-element'
 import { resetStyles } from '../../styles/reset'
+import { mobileQuery } from '../../styles/device'
 
+// 排法類欄位可分裝置(電腦 / 手機各存一份),品牌樣式類不分 ——
+// 顏色 / 圓角 / 邊框 / 陰影兩個裝置不一致是 bug 不是功能。
 export interface ContainerData {
-  direction?: 'row' | 'column'
-  justify?: 'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around'
-  align?: 'stretch' | 'flex-start' | 'center' | 'flex-end'
-  wrap?: boolean
-  gap?: number | Spacing
-  padding?: number | Spacing
+  direction?: MaybePerDevice<'row' | 'column'>
+  justify?: MaybePerDevice<'flex-start' | 'center' | 'flex-end' | 'space-between' | 'space-around'>
+  align?: MaybePerDevice<'stretch' | 'flex-start' | 'center' | 'flex-end'>
+  wrap?: MaybePerDevice<boolean>
+  gap?: MaybePerDevice<number | Spacing>
+  padding?: MaybePerDevice<number | Spacing>
   background?: string
   radius?: number
   shadowOn?: boolean
@@ -53,6 +56,8 @@ export class SfContainer extends SfBlockElement {
 
   @property({ type: Object }) data: ContainerData = {}
 
+  // 排法走 CSS 變數 + container query:電腦值寫 --sf-x,手機值只有在不同時才寫 --sf-x-m,
+  // 手機那段用 var(--sf-x-m, var(--sf-x)) 自動沿用 → 不分裝置的容器不會多出任何位元組。
   static styles = css`
     ${resetStyles}
     :host {
@@ -61,6 +66,24 @@ export class SfContainer extends SfBlockElement {
     .c {
       display: flex;
       box-sizing: border-box;
+      flex-direction: var(--sf-dir);
+      justify-content: var(--sf-justify);
+      align-items: var(--sf-align);
+      flex-wrap: var(--sf-wrap);
+      column-gap: var(--sf-gap-x);
+      row-gap: var(--sf-gap-y);
+      padding: var(--sf-pad);
+    }
+    ${mobileQuery} {
+      .c {
+        flex-direction: var(--sf-dir-m, var(--sf-dir));
+        justify-content: var(--sf-justify-m, var(--sf-justify));
+        align-items: var(--sf-align-m, var(--sf-align));
+        flex-wrap: var(--sf-wrap-m, var(--sf-wrap));
+        column-gap: var(--sf-gap-x-m, var(--sf-gap-x));
+        row-gap: var(--sf-gap-y-m, var(--sf-gap-y));
+        padding: var(--sf-pad-m, var(--sf-pad));
+      }
     }
     ::slotted(*) {
       min-width: 0;
@@ -69,8 +92,21 @@ export class SfContainer extends SfBlockElement {
 
   render() {
     const d = this.data
-    const gap = toSpacing(d.gap, 16)
-    const pad = toSpacing(d.padding, 16)
+    // 分裝置的排法欄位 → CSS 變數(兩份)
+    const vars = genDeviceVars(d, (dd) => {
+      const gap = toSpacing(dd.gap, 16)
+      const pad = toSpacing(dd.padding, 16)
+      return {
+        dir: dd.direction ?? 'column',
+        justify: dd.justify ?? 'flex-start',
+        align: dd.align ?? 'stretch',
+        wrap: dd.wrap ? 'wrap' : 'nowrap',
+        'gap-x': `${gap.x}px`,
+        'gap-y': `${gap.y}px`,
+        pad: `${pad.y}px ${pad.x}px`,
+      }
+    })
+    // 不分裝置的品牌樣式 → 照舊直接寫
     const s = SHADOWS[d.shadow ?? 'md']
     const shadow = d.shadowOn
       ? `0 ${s.y}px ${s.blur}px ${shadowRgba(d.shadowColor ?? '#000000', s.a)}`
@@ -79,13 +115,7 @@ export class SfContainer extends SfBlockElement {
       ? `border:${d.borderWidth ?? 1}px solid ${d.borderColor ?? '#e5e5e5'}`
       : ''
     const style = [
-      `flex-direction:${d.direction ?? 'column'}`,
-      `justify-content:${d.justify ?? 'flex-start'}`,
-      `align-items:${d.align ?? 'stretch'}`,
-      `flex-wrap:${d.wrap ? 'wrap' : 'nowrap'}`,
-      `column-gap:${gap.x}px`,
-      `row-gap:${gap.y}px`,
-      `padding:${pad.y}px ${pad.x}px`,
+      vars,
       d.background ? `background:${d.background}` : '',
       d.radius ? `border-radius:${d.radius}px` : '',
       d.radius ? 'overflow:hidden' : '',
@@ -105,10 +135,13 @@ export const containerType: BlockType = {
   container: true,
   schema: {
     fields: [
+      // 排法類:可分裝置。direction 是其中最關鍵的一個 ——
+      // 電腦 row、手機 column,「三欄變一欄」就是靠它。
       {
         key: 'direction',
         label: '方向',
         type: 'select',
+        perDevice: true,
         options: [
           { label: '水平 →', value: 'row' },
           { label: '垂直 ↓', value: 'column' },
@@ -118,6 +151,7 @@ export const containerType: BlockType = {
         key: 'justify',
         label: '主軸對齊',
         type: 'select',
+        perDevice: true,
         options: [
           { label: '起', value: 'flex-start' },
           { label: '置中', value: 'center' },
@@ -130,6 +164,7 @@ export const containerType: BlockType = {
         key: 'align',
         label: '交叉軸對齊',
         type: 'select',
+        perDevice: true,
         options: [
           { label: '拉伸', value: 'stretch' },
           { label: '起', value: 'flex-start' },
@@ -137,9 +172,26 @@ export const containerType: BlockType = {
           { label: '末', value: 'flex-end' },
         ],
       },
-      { key: 'wrap', label: '自動換行', type: 'boolean' },
-      { key: 'gap', label: '間距 X/Y', type: 'spacing', min: 0, max: 120, step: 2 },
-      { key: 'padding', label: '內距 X/Y', type: 'spacing', min: 0, max: 120, step: 2 },
+      { key: 'wrap', label: '自動換行', type: 'boolean', perDevice: true },
+      {
+        key: 'gap',
+        label: '間距 X/Y',
+        type: 'spacing',
+        min: 0,
+        max: 120,
+        step: 2,
+        perDevice: true,
+      },
+      {
+        key: 'padding',
+        label: '內距 X/Y',
+        type: 'spacing',
+        min: 0,
+        max: 120,
+        step: 2,
+        perDevice: true,
+      },
+      // 以下是品牌樣式,不分裝置 —— 兩個裝置顏色 / 圓角不一致是 bug 不是功能。
       { key: 'background', label: '背景色', type: 'color' },
       { key: 'radius', label: '圓角', type: 'number', min: 0, max: 40, step: 2 },
       { key: 'borderOn', label: '邊框', type: 'boolean' },

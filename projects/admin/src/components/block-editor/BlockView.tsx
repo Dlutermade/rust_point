@@ -1,6 +1,6 @@
 import { createElement, memo, useCallback, useLayoutEffect, useRef } from 'react'
-import { blockTypeMap } from '@sc/blocks'
-import type { BlockInstance, BlockSize, Pos9 } from '../../api/types'
+import { MOBILE_BREAKPOINT, VIEWPORT_CONTAINER, atDevice, blockTypeMap } from '@sc/blocks'
+import type { BlockInstance, BlockSize, Pos9 } from '../../service/storefront/shared/types'
 
 type Axis = 'flow' | 'row' | 'column' | 'stack'
 
@@ -87,6 +87,21 @@ function sizeStyle(size: BlockSize | undefined, pos: Pos9 | undefined, parentAxi
   ].join(';')
 }
 
+const MOBILE_AT = `@container ${VIEWPORT_CONTAINER} (max-width:${MOBILE_BREAKPOINT}px)`
+const DESKTOP_AT = `@container ${VIEWPORT_CONTAINER} (min-width:${MOBILE_BREAKPOINT + 1}px)`
+
+/**
+ * 顯示裝置 → CSS。`all` 不輸出任何規則(絕大多數區塊都是這個,零成本)。
+ *
+ * 用 display:none 而不是不渲染 —— 前台 SSR 出的是同一份 HTML,兩個裝置共用,
+ * 由 CSS 決定誰看得見;若靠 JS 決定要不要渲染,就得為每個裝置各產一份 HTML。
+ */
+function genVisibilityRule(selector: string, visibility: BlockInstance['visibility']): string {
+  if (visibility === 'all') return ''
+  const hideAt = visibility === 'desktop' ? MOBILE_AT : DESKTOP_AT
+  return `${hideAt}{${selector}{display:none}}`
+}
+
 type BlockViewInnerProps = {
   instance: BlockInstance
   parentAxis?: Axis
@@ -101,14 +116,16 @@ function BlockViewInner({ instance, parentAxis = 'flow' }: BlockViewInnerProps) 
   const axisRef = useRef(parentAxis)
   axisRef.current = parentAxis
 
-  // 把 data(property,非 attribute)+ 版面 style 塞進 WC。
+  // 把 data(property,非 attribute)塞進 WC。
+  //
+  // 尺寸 / 疊層位置**不走 inline style** —— 它們要能分裝置,而 inline style 寫不了
+  // container query,而且優先級最高會直接蓋掉查詢裡的規則。改由下方輸出具名規則。
   const apply = (el: (HTMLElement & { data?: unknown }) | null) => {
     if (!el) return
     const inst = instRef.current
     el.data = inst.data
     // 明確告知父層軸(分割線的「自動」方向靠這個;其餘區塊忽略)。
     el.setAttribute('parent-axis', axisRef.current)
-    el.setAttribute('style', sizeStyle(inst.size, inst.pos, axisRef.current))
   }
   // 穩定的 callback ref:元素一掛上(含 remount 到新父層)就「同步」塞 data,
   // 不等 useEffect,避免新元素先以預設 data render 一幀(容器會閃/卡成垂直)。
@@ -119,10 +136,28 @@ function BlockViewInner({ instance, parentAxis = 'flow' }: BlockViewInnerProps) 
   // instance 更新時重塞(同一元素、非 remount);remount 由上面的 callback ref 同步處理。
   useLayoutEffect(() => {
     apply(nodeRef.current)
-  }, [instance.data, instance.size, instance.pos, parentAxis])
+  }, [instance.data, parentAxis])
 
   const bt = blockTypeMap[instance.type]
   if (!bt) return null
+
+  // 尺寸 / 位置的兩份規則。手機那份只有在真的不同時才輸出 —— 沒分裝置的區塊零成本。
+  const desktopCss = sizeStyle(
+    atDevice(instance.size, 'desktop'),
+    atDevice(instance.pos, 'desktop'),
+    parentAxis,
+  )
+  const mobileCss = sizeStyle(
+    atDevice(instance.size, 'mobile'),
+    atDevice(instance.pos, 'mobile'),
+    parentAxis,
+  )
+  const selector = `[data-block-id="${instance.id}"]`
+  const sizeRules =
+    `${selector}{${desktopCss}}` +
+    (desktopCss === mobileCss
+      ? ''
+      : `@container ${VIEWPORT_CONTAINER} (max-width:${MOBILE_BREAKPOINT}px){${selector}{${mobileCss}}}`)
 
   const attrs: Record<string, unknown> = { ref: setNode, 'data-block-id': instance.id }
   if (bt.container) attrs['data-container'] = ''
@@ -138,7 +173,12 @@ function BlockViewInner({ instance, parentAxis = 'flow' }: BlockViewInnerProps) 
     <BlockView key={child.id} instance={child} parentAxis={childAxis} />
   ))
 
-  return createElement(bt.tag, attrs, children)
+  return (
+    <>
+      <style>{sizeRules + genVisibilityRule(selector, instance.visibility)}</style>
+      {createElement(bt.tag, attrs, children)}
+    </>
+  )
 }
 
 export const BlockView = memo(BlockViewInner)

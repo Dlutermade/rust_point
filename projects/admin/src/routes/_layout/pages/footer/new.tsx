@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageContainer } from '@ant-design/pro-components'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { pageTitle } from '../../../../shared/head'
-import { footerApi } from '../../../../api/footer'
+import { footerApi } from '../../../../service/storefront/footer'
 import { FooterTemplateForm } from '../../../../components/page-template/footer/FooterTemplateForm'
 import type { FooterTemplateFormValues } from '../../../../components/page-template/footer/FooterTemplateForm'
 import { genFooterPublishConfirm } from '../../../../components/page-template/footer/footerPublishConfirm'
@@ -40,8 +40,12 @@ function FooterNewPage() {
 
   const submitMutation = useMutation({
     mutationFn: async ({ action, values }: SubmitArgs) => {
-      const created = await footerApi.createDraft(values.name.trim())
-      await footerApi.saveDraft(created.id, { content: values.content })
+      // 一次建好(內容一併帶上),不再補一趟 save-draft。
+      const created = await footerApi.create({
+        name: values.name.trim(),
+        content: values.content,
+        copyFrom: from,
+      })
       if (action === 'publish') await footerApi.publish(created.id, {})
       return { id: created.id, action }
     },

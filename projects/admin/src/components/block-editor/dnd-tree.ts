@@ -1,6 +1,12 @@
 import { arrayMove } from '@dnd-kit/sortable'
 import { blockTypeMap } from '@sc/blocks'
-import type { BlockInstance, BlockSize, Pos9 } from '../../api/types'
+import type {
+  BlockInstance,
+  BlockSize,
+  DeviceVisibility,
+  PerDevice,
+  Pos9,
+} from '../../service/storefront/shared/types'
 
 // dnd-kit 版巢狀樹的核心:攤平 → 拖動時投影出目標深度/父層 → 放開後重建樹。
 // 參考 dnd-kit 官方 sortable-tree 範例,依本專案「只有容器能當父」調整。
@@ -11,8 +17,9 @@ export interface FlatBlock {
   id: string
   type: string
   data: Record<string, unknown>
-  size?: BlockSize
-  pos?: Pos9
+  size?: PerDevice<BlockSize>
+  pos?: PerDevice<Pos9>
+  visibility: DeviceVisibility
   name?: string
   isContainer: boolean
   hasChildren: boolean
@@ -34,6 +41,7 @@ export function flattenBlocks(
       data: n.data,
       size: n.size,
       pos: n.pos,
+      visibility: n.visibility,
       name: n.name,
       isContainer: !!blockTypeMap[n.type]?.container,
       hasChildren: !!(n.children && n.children.length),
@@ -62,7 +70,12 @@ export function removeChildrenOf(items: FlatBlock[], ids: string[]): FlatBlock[]
 export function buildTree(flat: FlatBlock[]): BlockInstance[] {
   const byId: Record<string, BlockInstance> = {}
   for (const f of flat) {
-    const node: BlockInstance = { id: f.id, type: f.type, data: f.data }
+    const node: BlockInstance = {
+      id: f.id,
+      type: f.type,
+      data: f.data,
+      visibility: f.visibility,
+    }
     if (f.size) node.size = f.size
     if (f.pos) node.pos = f.pos
     if (f.name) node.name = f.name

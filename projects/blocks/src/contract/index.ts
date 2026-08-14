@@ -2,3 +2,4 @@
 export * from './block-type'
 export * from './action'
 export * from './spacing'
+export * from './per-device'

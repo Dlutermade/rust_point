@@ -2,14 +2,31 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button, Input, Modal, Spin } from 'antd'
 import { CheckCircleFilled, SearchOutlined } from '@ant-design/icons'
-import type { BlockInstance, ChromeOverride, PageTemplate } from '../../../api/types'
+import type { BlockInstance, TemplateStatus } from '../../../service/storefront/shared/types'
 import { BlockView } from '../../block-editor/BlockView'
 
+/**
+ * 這個元件吐出的「頁首 + 頁尾」一對。送出時由 route 展開成 `HomePagePatch`
+ * 的兩個平欄位 —— 後端那邊它們是兩個獨立 FK,可以只指定其中一個。
+ */
+export interface ChromeSelection {
+  headerTemplateId?: string
+  footerTemplateId?: string
+}
+
+/** 選項只用得到這幾欄;HeaderTemplate 與 FooterTemplate 都結構相容。 */
+type ChromeOption = {
+  id: string
+  name: string
+  status: TemplateStatus
+  isSiteDefault: boolean
+}
+
 type HomeChromePickerProps = {
-  value?: ChromeOverride
-  onChange?: (v: ChromeOverride) => void
-  headerOptions: PageTemplate[]
-  footerOptions: PageTemplate[]
+  value?: ChromeSelection
+  onChange?: (v: ChromeSelection) => void
+  headerOptions: ChromeOption[]
+  footerOptions: ChromeOption[]
   /** 依模板 id 取該外框的內容(積木),供縮圖真預覽用。 */
   loadContent: (id: string) => Promise<BlockInstance[]>
   readOnly?: boolean
@@ -17,7 +34,7 @@ type HomeChromePickerProps = {
 
 // 頁面外框挑選(Model B):頁首/頁尾各一個「目前選擇 + 更換」欄;更換開彈窗,清單可搜尋、帶真實縮圖預覽。
 // 選項是「別的外框模板」,數量無上限 → 用彈窗 + 搜尋撐規模,不用會爆版的卡片牆。
-// 受控:value 是 ChromeOverride,吐回完整 ChromeOverride。放進 Form.Item name="chrome" 即自動綁定。
+// 受控:value 是「頁首 + 頁尾」一對,吐回完整的一對;送出時由 route 展開成兩個平欄位。
 export function HomeChromePicker({
   value,
   onChange,
@@ -27,7 +44,7 @@ export function HomeChromePicker({
   readOnly,
 }: HomeChromePickerProps) {
   const chrome = value ?? {}
-  const getActiveTemplates = (list: PageTemplate[]) =>
+  const getActiveTemplates = (list: ChromeOption[]) =>
     list.filter((template) => template.status === 'active')
 
   return (
@@ -36,32 +53,32 @@ export function HomeChromePicker({
         label="頁首"
         slot="header"
         options={getActiveTemplates(headerOptions)}
-        selectedId={chrome.headerId}
+        selectedId={chrome.headerTemplateId}
         loadContent={loadContent}
         readOnly={readOnly}
-        onPick={(id) => onChange?.({ ...chrome, headerId: id })}
+        onPick={(id) => onChange?.({ ...chrome, headerTemplateId: id })}
       />
       <SlotPicker
         label="頁尾"
         slot="footer"
         options={getActiveTemplates(footerOptions)}
-        selectedId={chrome.footerId}
+        selectedId={chrome.footerTemplateId}
         loadContent={loadContent}
         readOnly={readOnly}
-        onPick={(id) => onChange?.({ ...chrome, footerId: id })}
+        onPick={(id) => onChange?.({ ...chrome, footerTemplateId: id })}
       />
     </div>
   )
 }
 
-function genRoleLabel(template: PageTemplate): string {
-  return template.isDefault ? '站台預設版' : '替代版'
+function genRoleLabel(template: ChromeOption): string {
+  return template.isSiteDefault ? '站台預設版' : '替代版'
 }
 
 type SlotPickerProps = {
   label: string
   slot: 'header' | 'footer'
-  options: PageTemplate[]
+  options: ChromeOption[]
   selectedId?: string
   loadContent: (id: string) => Promise<BlockInstance[]>
   readOnly?: boolean

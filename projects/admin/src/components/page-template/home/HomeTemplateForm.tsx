@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ProCard, ProForm, ProFormText } from '@ant-design/pro-components'
 import { Form } from 'antd'
 import type { FormInstance } from 'antd'
-import type { BlockInstance } from '../../../api/types'
+import type { BlockInstance } from '../../../service/storefront/shared/types'
 import { ContentField } from '../../block-editor/ContentField'
 
 // 首頁模板表單:ProForm(表單 store)+ 欄位排版。

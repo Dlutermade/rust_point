@@ -8,7 +8,7 @@ import {
   HolderOutlined,
   UpOutlined,
 } from '@ant-design/icons'
-import type { BlockInstance } from '../../api/types'
+import type { BlockInstance } from '../../service/storefront/shared/types'
 import { findParent } from './tree'
 
 interface Rect {

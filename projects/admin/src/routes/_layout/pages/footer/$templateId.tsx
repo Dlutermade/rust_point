@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PageContainer } from '@ant-design/pro-components'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { pageTitle } from '../../../../shared/head'
-import { footerApi } from '../../../../api/footer'
+import { footerApi } from '../../../../service/storefront/footer'
 import { FooterTemplateForm } from '../../../../components/page-template/footer/FooterTemplateForm'
 import type { FooterTemplateFormValues } from '../../../../components/page-template/footer/FooterTemplateForm'
 import { StatusTag } from '../../../../components/page-template/StatusTag'
@@ -84,7 +84,7 @@ function FooterEditorPage() {
         title: (
           <Space>
             {templateName}
-            {templateQuery.data ? <StatusTag template={templateQuery.data} /> : undefined}
+            {templateQuery.data ? <StatusTag status={templateQuery.data.status} /> : undefined}
           </Space>
         ),
         onBack: () => navigate({ to: '/pages/footer' }),

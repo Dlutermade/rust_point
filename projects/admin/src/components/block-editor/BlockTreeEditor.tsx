@@ -8,8 +8,13 @@ import {
   RedoOutlined,
   UndoOutlined,
 } from '@ant-design/icons'
-import { blockTypeMap } from '@sc/blocks'
-import type { BlockInstance, BlockSize, Pos9 } from '../../api/types'
+import { blockTypeMap, withDevice } from '@sc/blocks'
+import type {
+  BlockInstance,
+  BlockSize,
+  DeviceVisibility,
+  Pos9,
+} from '../../service/storefront/shared/types'
 import { applyReorder } from './dnd-tree'
 import type { ReorderMove } from './dnd-tree'
 import { BlockList } from './BlockList'
@@ -115,11 +120,15 @@ export function BlockTreeEditor({
         id: crypto.randomUUID().slice(0, 8),
         type,
         data: { ...bt.defaults },
+        visibility: 'all',
       }
       const parent = parentId ? findNode(b, parentId) : null
       const containerId = parent && blockTypeMap[parent.type]?.container ? parentId : null
-      // 圖片丟進疊層 → 預設鋪滿當背景(不設就以自然尺寸溢出,還得手動去設 Fill)。
-      if (type === 'image' && parent?.type === 'stack') inst.size = { w: 'fill', h: 'fill' }
+      // 圖片丟進疊層 → 預設鋪滿當背景(不設就以自然尺寸溢出,還得手動去設 Fill)。兩個裝置都套。
+      if (type === 'image' && parent?.type === 'stack') {
+        const fill = { w: 'fill', h: 'fill' } as const
+        inst.size = { desktop: fill, mobile: fill }
+      }
       commit(containerId ? insertChild(b, containerId, inst) : [...b, inst])
       setSelectedId(inst.id)
     },
@@ -264,13 +273,28 @@ export function BlockTreeEditor({
     if (!selectedId) return
     commit(updateNode(blocks, selectedId, { data }), `edit:${selectedId}`)
   }
+  // 尺寸 / 位置只改「目前正在看的那個裝置」,另一個裝置維持原樣 ——
+  // 所以切到手機調版面不會把電腦的排法一起改掉。
   const updateSize = (size: BlockSize) => {
     if (!selectedId) return
-    commit(updateNode(blocks, selectedId, { size }), `edit:${selectedId}`)
+    const current = findNode(blocks, selectedId)?.size
+    commit(
+      updateNode(blocks, selectedId, { size: withDevice(current, device, size) }),
+      `edit:${selectedId}`,
+    )
   }
   const updatePos = (pos: Pos9) => {
     if (!selectedId) return
-    commit(updateNode(blocks, selectedId, { pos }), `edit:${selectedId}`)
+    const current = findNode(blocks, selectedId)?.pos
+    commit(
+      updateNode(blocks, selectedId, { pos: withDevice(current, device, pos) }),
+      `edit:${selectedId}`,
+    )
+  }
+  // 顯示裝置不分裝置存(它本身就是在講裝置)。
+  const updateVisibility = (visibility: DeviceVisibility) => {
+    if (!selectedId) return
+    commit(updateNode(blocks, selectedId, { visibility }), `edit:${selectedId}`)
   }
   const parent = selectedId ? findParent(blocks, selectedId) : null
   const parentIsStack = parent?.type === 'stack'
@@ -356,7 +380,7 @@ export function BlockTreeEditor({
             onSelectParent={selectParent}
             onReorderBefore={reorderBefore}
             device={device}
-            variant="preview"
+            templateId="preview"
             header={contextHeader}
             footer={contextFooter}
             frame={frame}
@@ -370,6 +394,8 @@ export function BlockTreeEditor({
             onChange={updateData}
             onSize={updateSize}
             onPos={updatePos}
+            onVisibility={updateVisibility}
+            device={device}
             parentIsStack={parentIsStack}
             readOnly={readOnly}
           />

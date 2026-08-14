@@ -1,4 +1,4 @@
-import type { BlockInstance } from '../api/types'
+import type { BlockInstance } from '../service/storefront/shared/types'
 
 // 預覽暫存(client-only channel):編輯器把「當前 blocks」寫這、預覽分頁讀這。
 // 不是 server —— 預覽只是看當前樣子,絕不持久化(儲存草稿才走 server)。

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { ProCard, ProForm, ProFormText } from '@ant-design/pro-components'
 import { Form } from 'antd'
 import type { FormInstance } from 'antd'
-import type { BlockInstance } from '../../../api/types'
+import type { BlockInstance } from '../../../service/storefront/shared/types'
 import { ContentField } from '../../block-editor/ContentField'
 
 // 頁尾模板表單。頁尾是外框:沒有生效條件、沒有外框覆寫、預覽不需要疊上下文,

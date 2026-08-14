@@ -7,8 +7,8 @@ import { DownOutlined, EditOutlined, EyeOutlined, PlusOutlined } from '@ant-desi
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { pageTitle } from '../../../../shared/head'
-import { headerApi } from '../../../../api/header'
-import type { PageTemplate } from '../../../../api/types'
+import { headerApi } from '../../../../service/storefront/header'
+import type { HeaderTemplate } from '../../../../service/storefront/header'
 import { AuditDrawer } from '../../../../components/page-template/AuditDrawer'
 import { StatusTag } from '../../../../components/page-template/StatusTag'
 
@@ -35,7 +35,7 @@ function HeaderListPage() {
     },
   })
   const setDefaultMutation = useMutation({
-    mutationFn: (id: string) => headerApi.setDefault(id),
+    mutationFn: (id: string) => headerApi.setSiteDefault(id),
     onSuccess: () => {
       message.success('已設為站台預設')
       void invalidateList()
@@ -64,7 +64,7 @@ function HeaderListPage() {
   })
 
   // 次要動作收進「更多」下拉(垂直、不佔橫向空間)。
-  const genMoreItems = (template: PageTemplate): MenuProps['items'] =>
+  const genMoreItems = (template: HeaderTemplate): MenuProps['items'] =>
     [
       template.status === 'draft' && {
         key: 'publish',
@@ -75,14 +75,14 @@ function HeaderListPage() {
       template.status !== 'draft' && {
         key: 'toggle',
         label: template.status === 'active' ? '暫停' : '恢復生效',
-        disabled: template.isDefault,
+        disabled: template.isSiteDefault,
         onClick: () =>
           template.status === 'active'
             ? pauseMutation.mutate(template.id)
             : resumeMutation.mutate(template.id),
       },
       template.status === 'active' &&
-        !template.isDefault && {
+        !template.isSiteDefault && {
           key: 'default',
           label: '設為站台預設',
           onClick: () => setDefaultMutation.mutate(template.id),
@@ -93,9 +93,9 @@ function HeaderListPage() {
         onClick: () => navigate({ to: '/pages/header/new', search: { from: template.id } }),
       },
       { key: 'audit', label: '異動紀錄', onClick: () => setAuditingTemplateId(template.id) },
-      !template.isDefault &&
+      !template.isSiteDefault &&
         template.status !== 'active' && { type: 'divider' as const, key: 'd1' },
-      !template.isDefault &&
+      !template.isSiteDefault &&
         template.status !== 'active' && {
           key: 'del',
           label: '刪除',
@@ -111,14 +111,14 @@ function HeaderListPage() {
         },
     ].filter(Boolean) as MenuProps['items']
 
-  const columns: ProColumns<PageTemplate>[] = [
+  const columns: ProColumns<HeaderTemplate>[] = [
     {
       title: '名稱',
       dataIndex: 'name',
       render: (_, template) => (
         <Space>
           {template.name}
-          {template.isDefault && <Tag color="green">● 站台預設（生效中）</Tag>}
+          {template.isSiteDefault && <Tag color="green">● 站台預設（生效中）</Tag>}
         </Space>
       ),
     },
@@ -126,7 +126,7 @@ function HeaderListPage() {
       title: '狀態',
       dataIndex: 'status',
       width: 140,
-      render: (_, template) => <StatusTag template={template} />,
+      render: (_, template) => <StatusTag status={template.status} />,
     },
     { title: '更新時間', dataIndex: 'updatedAt', width: 160 },
     {
@@ -157,7 +157,7 @@ function HeaderListPage() {
 
   return (
     <PageContainer>
-      <ProTable<PageTemplate>
+      <ProTable<HeaderTemplate>
         headerTitle="頁首設定"
         rowKey="id"
         search={false}
